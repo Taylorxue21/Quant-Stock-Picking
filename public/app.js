@@ -35,12 +35,42 @@ const COLORS = {
 // DATA LOADING
 // ============================================
 
+function showUserError(message) {
+  // 在页面顶部显示一个友好的错误提示条
+  let banner = document.getElementById('errorBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'errorBanner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#ef4444;color:#fff;text-align:center;padding:12px 20px;font-size:14px;font-weight:500;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:none;';
+    document.body.prepend(banner);
+  }
+  banner.textContent = message;
+  banner.style.display = 'block';
+  // 10秒后自动隐藏
+  setTimeout(() => { banner.style.display = 'none'; }, 10000);
+}
+
 async function loadCompanyData(ticker) {
   try {
     const cleanTicker = ticker.trim().toUpperCase();
     const response = await fetch(`/api/stocks/${cleanTicker}`);
+    if (response.status === 429) {
+      const data = await response.json().catch(() => ({}));
+      const msg = data.error || '当前数据源访问人数过多被限流，请稍后刷新重试';
+      console.warn('[前端] 限流 (429):', cleanTicker, msg);
+      showUserError('⚠️ ' + msg);
+      return null;
+    }
     if (response.status === 404) {
       console.warn('[前端] 股票代码未找到 (404):', cleanTicker);
+      showUserError('⚠️ 未找到股票代码: ' + cleanTicker);
+      return null;
+    }
+    if (response.status >= 500) {
+      const data = await response.json().catch(() => ({}));
+      const msg = data.error || '服务器内部错误';
+      console.warn('[前端] 服务器错误 (' + response.status + '):', cleanTicker, msg);
+      showUserError('⚠️ ' + msg + '，请稍后重试');
       return null;
     }
     if (!response.ok) throw new Error('Failed to load data');
@@ -48,6 +78,7 @@ async function loadCompanyData(ticker) {
     return companyData;
   } catch (error) {
     console.error('Error loading company data:', error);
+    showUserError('⚠️ 网络请求失败，请检查网络连接后重试');
     return null;
   }
 }
@@ -56,14 +87,30 @@ async function loadStockData(ticker) {
   try {
     const cleanTicker = ticker.trim().toUpperCase();
     const response = await fetch(`/api/stocks/${cleanTicker}`);
+    if (response.status === 429) {
+      const data = await response.json().catch(() => ({}));
+      const msg = data.error || '当前数据源访问人数过多被限流，请稍后刷新重试';
+      console.warn('[前端] 限流 (429):', cleanTicker, msg);
+      showUserError('⚠️ ' + msg);
+      return null;
+    }
     if (response.status === 404) {
       console.warn('[前端] 股票代码未找到 (404):', cleanTicker);
+      showUserError('⚠️ 未找到股票代码: ' + cleanTicker);
+      return null;
+    }
+    if (response.status >= 500) {
+      const data = await response.json().catch(() => ({}));
+      const msg = data.error || '服务器内部错误';
+      console.warn('[前端] 服务器错误 (' + response.status + '):', cleanTicker, msg);
+      showUserError('⚠️ ' + msg + '，请稍后重试');
       return null;
     }
     if (!response.ok) throw new Error('Failed to load stock data');
     return await response.json();
   } catch (error) {
     console.error('Error loading stock data:', error);
+    showUserError('⚠️ 网络请求失败，请检查网络连接后重试');
     return null;
   }
 }

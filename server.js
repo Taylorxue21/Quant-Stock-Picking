@@ -182,10 +182,22 @@ app.get('/api/stocks/:ticker', async (req, res) => {
     res.json(responseData);
 
   } catch (error) {
-    console.error(`[API] ❌ ${ticker} 失败:`, error.message);
-    res.status(404).json({
-      error: 'Stock not found or Yahoo API limit reached',
-      details: error.message
+    const errMsg = error.message || '';
+    console.error(`[API] ❌ ${ticker} 失败:`, errMsg);
+
+    // 判断是否为限流错误 (429) 或 crumb 错误
+    if (errMsg.includes('429') || errMsg.includes('Too Many Requests') || errMsg.includes('crumb') || errMsg.includes('Failed to get crumb')) {
+      return res.status(429).json({
+        error: 'Yahoo API 限流，请稍后再试或更换数据源',
+        details: errMsg,
+        retryAfter: 60
+      });
+    }
+
+    // 其他错误统一返回 500
+    res.status(500).json({
+      error: '服务器内部错误，获取股票数据失败',
+      details: errMsg
     });
   }
 });
