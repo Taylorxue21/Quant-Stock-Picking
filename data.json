@@ -1,0 +1,224 @@
+{
+  "AAPL": {
+    "companyName": "Apple Inc.",
+    "ticker": "AAPL",
+    "sector": "Technology",
+    "industry": "Consumer Electronics",
+    "description": "Apple Inc. designs, manufactures, and markets smartphones, personal computers, tablets, wearables, and accessories worldwide.",
+    "financialData": {
+      "incomeStatement": {
+        "years": ["2022-09", "2023-09", "2024-09", "2025-09", "2026-06"],
+        "totalRevenue": [394328, 383285, 391035, 412345, 218000],
+        "costOfRevenue": [223546, 214137, 211000, 225000, 118000],
+        "grossProfit": [170782, 169148, 180035, 187345, 100000],
+        "operatingExpenses": {
+          "researchAndDevelopment": [26251, 29915, 31340, 33500, 18000],
+          "sellingGeneralAndAdministrative": [25094, 24932, 25100, 26500, 14000]
+        },
+        "operatingIncome": [119437, 114301, 123595, 127345, 68000],
+        "interestExpense": [2931, 3932, 3850, 3700, 1800],
+        "incomeBeforeTax": [119437, 114301, 123595, 127345, 68000],
+        "incomeTaxExpense": [19073, 16741, 18500, 21000, 11000],
+        "netIncome": [99803, 96995, 101095, 106345, 57000],
+        "epsDiluted": [6.11, 6.16, 6.59, 7.12, 3.85],
+        "weightedAverageShsOut": [16326, 15742, 15342, 14950, 14800]
+      },
+      "balanceSheet": {
+        "years": ["2022-09", "2023-09", "2024-09", "2025-09", "2026-06"],
+        "cashAndCashEquivalents": [23646, 29965, 37100, 42500, 48000],
+        "shortTermInvestments": [24763, 31590, 28500, 32000, 35000],
+        "accountsReceivable": [28184, 29508, 31200, 33500, 31000],
+        "inventory": [4946, 6331, 5800, 6200, 5500],
+        "otherCurrentAssets": [21223, 14733, 16500, 18000, 17500],
+        "totalCurrentAssets": [135405, 143566, 135000, 145000, 148000],
+        "propertyPlantEquipment": [42117, 43715, 45000, 47000, 48000],
+        "goodwillAndIntangibleAssets": [0, 0, 0, 0, 0],
+        "longTermInvestments": [120887, 100544, 105000, 110000, 115000],
+        "otherNonCurrentAssets": [54428, 64855, 68000, 72000, 75000],
+        "totalNonCurrentAssets": [217432, 209114, 218000, 229000, 238000],
+        "totalAssets": [352837, 352680, 353000, 374000, 386000],
+        "accountsPayable": [64115, 62611, 65000, 68000, 65000],
+        "shortTermDebt": [21110, 14982, 16000, 15000, 14000],
+        "deferredRevenue": [7912, 8161, 8500, 9000, 8500],
+        "otherCurrentLiabilities": [60593, 58929, 61000, 64000, 62000],
+        "totalCurrentLiabilities": [153730, 144683, 150500, 156000, 149500],
+        "longTermDebt": [98959, 95281, 92000, 88000, 85000],
+        "otherNonCurrentLiabilities": [49142, 53482, 55000, 58000, 56000],
+        "totalNonCurrentLiabilities": [148101, 148763, 147000, 146000, 141000],
+        "totalLiabilities": [301831, 293446, 297500, 302000, 290500],
+        "totalShareholdersEquity": [50672, 62146, 55500, 72000, 95500],
+        "retainedEarnings": [-3068, -6916, -5000, 2000, 8000],
+        "accumulatedOtherComprehensiveIncome": [-11109, -11432, -10500, -9500, -8500]
+      },
+      "cashFlow": {
+        "years": ["2022-09", "2023-09", "2024-09", "2025-09", "2026-06"],
+        "operatingCashFlow": [122151, 110543, 118950, 125000, 65000],
+        "capitalExpenditure": [-10708, -10959, -11500, -12000, -6000],
+        "freeCashFlow": [111443, 99584, 107450, 113000, 59000],
+        "dividendsPaid": [-14841, -15025, -15500, -16200, -8500],
+        "commonStockRepurchase": [-89402, -77550, -82000, -85000, -42000],
+        "debtRepayment": [-8953, -10500, -8000, -7000, -3500],
+        "netBorrowings": [8953, 10500, 8000, 7000, 3500],
+        "changeInCash": [111443, 99584, 107450, 113000, 59000]
+      }
+    },
+    "ratios": {
+      "peRatio": [24.5, 28.3, 26.8, 25.1, 23.5],
+      "roe": [0.197, 0.156, 0.182, 0.148, 0.597],
+      "grossMargin": [0.433, 0.441, 0.460, 0.454, 0.459],
+      "debtToEquity": [1.95, 1.53, 1.66, 1.22, 0.89],
+      "currentRatio": [0.88, 0.99, 0.90, 0.93, 0.99],
+      "returnOnAssets": [0.283, 0.275, 0.286, 0.284, 0.148],
+      "assetTurnover": [1.12, 1.09, 1.11, 1.10, 0.56],
+      "equityMultiplier": [6.96, 5.67, 6.36, 5.19, 4.04]
+    }
+  },
+  "MSFT": {
+    "companyName": "Microsoft Corporation",
+    "ticker": "MSFT",
+    "sector": "Technology",
+    "industry": "Software—Infrastructure",
+    "description": "Microsoft Corporation develops and supports software, services, devices, and solutions worldwide.",
+    "financialData": {
+      "incomeStatement": {
+        "years": ["2022-06", "2023-06", "2024-06", "2025-06", "2026-06"],
+        "totalRevenue": [198270, 211915, 227000, 245000, 132000],
+        "costOfRevenue": [62550, 65720, 70000, 75000, 40000],
+        "grossProfit": [135720, 146195, 157000, 170000, 92000],
+        "operatingExpenses": {
+          "researchAndDevelopment": [24512, 27200, 29500, 32000, 17500],
+          "sellingGeneralAndAdministrative": [24512, 25600, 26500, 28000, 15000]
+        },
+        "operatingIncome": [83383, 88523, 97000, 106000, 57500],
+        "interestExpense": [2006, 1950, 1800, 1700, 800],
+        "incomeBeforeTax": [83383, 88523, 97000, 106000, 57500],
+        "incomeTaxExpense": [10955, 15740, 17000, 19000, 10000],
+        "netIncome": [72738, 72483, 80000, 87000, 47500],
+        "epsDiluted": [9.68, 9.72, 10.78, 11.85, 6.50],
+        "weightedAverageShsOut": [7516, 7458, 7420, 7340, 7300]
+      },
+      "balanceSheet": {
+        "years": ["2022-06", "2023-06", "2024-06", "2025-06", "2026-06"],
+        "cashAndCashEquivalents": [13931, 34500, 42000, 48000, 52000],
+        "shortTermInvestments": [90159, 76800, 72000, 68000, 65000],
+        "accountsReceivable": [44000, 48600, 52000, 56000, 53000],
+        "inventory": [2900, 3200, 3500, 3800, 3500],
+        "otherCurrentAssets": [15700, 18200, 20000, 22000, 21000],
+        "totalCurrentAssets": [167690, 181300, 189500, 197800, 194500],
+        "propertyPlantEquipment": [70100, 78000, 85000, 92000, 96000],
+        "goodwillAndIntangibleAssets": [67800, 68500, 70000, 71000, 71500],
+        "longTermInvestments": [5200, 5800, 6000, 6500, 6800],
+        "otherNonCurrentAssets": [23100, 25200, 27000, 29000, 30000],
+        "totalNonCurrentAssets": [166200, 177500, 188000, 198500, 204300],
+        "totalAssets": [333890, 358800, 377500, 396300, 398800],
+        "accountsPayable": [19000, 21000, 23000, 25000, 24000],
+        "shortTermDebt": [2800, 3500, 3000, 2800, 2500],
+        "deferredRevenue": [45000, 48000, 51000, 54000, 52000],
+        "otherCurrentLiabilities": [22000, 24000, 26000, 28000, 27000],
+        "totalCurrentLiabilities": [88800, 96500, 103000, 109800, 105500],
+        "longTermDebt": [47000, 42000, 38000, 35000, 32000],
+        "otherNonCurrentLiabilities": [63000, 68000, 72000, 76000, 74000],
+        "totalNonCurrentLiabilities": [110000, 110000, 110000, 111000, 106000],
+        "totalLiabilities": [198800, 206500, 213000, 220800, 211500],
+        "totalShareholdersEquity": [134890, 152300, 164500, 175500, 187300],
+        "retainedEarnings": [45000, 52000, 60000, 70000, 80000],
+        "accumulatedOtherComprehensiveIncome": [-5000, -4500, -4000, -3500, -3000]
+      },
+      "cashFlow": {
+        "years": ["2022-06", "2023-06", "2024-06", "2025-06", "2026-06"],
+        "operatingCashFlow": [89035, 87582, 95000, 102000, 55000],
+        "capitalExpenditure": [-23866, -28107, -30000, -32000, -17000],
+        "freeCashFlow": [65169, 59475, 65000, 70000, 38000],
+        "dividendsPaid": [-18100, -19200, -20500, -22000, -11500],
+        "commonStockRepurchase": [-27600, -22400, -25000, -28000, -14000],
+        "debtRepayment": [-4500, -5000, -4000, -3000, -1500],
+        "netBorrowings": [4500, 5000, 4000, 3000, 1500],
+        "changeInCash": [65169, 59475, 65000, 70000, 38000]
+      }
+    },
+    "ratios": {
+      "peRatio": [28.5, 32.1, 30.5, 28.8, 26.5],
+      "roe": [0.539, 0.476, 0.486, 0.496, 0.254],
+      "grossMargin": [0.685, 0.690, 0.692, 0.694, 0.697],
+      "debtToEquity": [0.35, 0.28, 0.23, 0.20, 0.17],
+      "currentRatio": [1.89, 1.88, 1.84, 1.80, 1.84],
+      "returnOnAssets": [0.218, 0.202, 0.212, 0.219, 0.119],
+      "assetTurnover": [0.59, 0.59, 0.60, 0.62, 0.33],
+      "equityMultiplier": [2.48, 2.36, 2.29, 2.26, 2.13]
+    }
+  },
+  "NVDA": {
+    "companyName": "NVIDIA Corporation",
+    "ticker": "NVDA",
+    "sector": "Technology",
+    "industry": "Semiconductors",
+    "description": "NVIDIA Corporation provides graphics, compute and networking solutions worldwide.",
+    "financialData": {
+      "incomeStatement": {
+        "years": ["2022-01", "2023-01", "2024-01", "2025-01", "2026-06"],
+        "totalRevenue": [26914, 60922, 110000, 165000, 95000],
+        "costOfRevenue": [9437, 16480, 28000, 42000, 24000],
+        "grossProfit": [17477, 44442, 82000, 123000, 71000],
+        "operatingExpenses": {
+          "researchAndDevelopment": [5068, 7340, 12000, 18000, 10500],
+          "sellingGeneralAndAdministrative": [2466, 3500, 5500, 8000, 4500]
+        },
+        "operatingIncome": [9943, 33602, 64500, 97000, 56000],
+        "interestExpense": [362, 380, 400, 350, 150],
+        "incomeBeforeTax": [9943, 33602, 64500, 97000, 56000],
+        "incomeTaxExpense": [1200, 4200, 8500, 14000, 8000],
+        "netIncome": [8743, 29402, 56000, 83000, 48000],
+        "epsDiluted": [3.51, 11.93, 22.75, 33.50, 19.20],
+        "weightedAverageShsOut": [2490, 2465, 2460, 2475, 2500]
+      },
+      "balanceSheet": {
+        "years": ["2022-01", "2023-01", "2024-01", "2025-01", "2026-06"],
+        "cashAndCashEquivalents": [3390, 5980, 12000, 22000, 35000],
+        "shortTermInvestments": [18970, 19200, 25000, 35000, 42000],
+        "accountsReceivable": [4470, 8300, 15000, 24000, 20000],
+        "inventory": [2600, 3800, 5500, 8000, 7000],
+        "otherCurrentAssets": [1200, 1800, 2500, 3500, 3000],
+        "totalCurrentAssets": [30630, 39080, 60000, 92500, 107000],
+        "propertyPlantEquipment": [3800, 5500, 9000, 15000, 20000],
+        "goodwillAndIntangibleAssets": [8700, 9000, 9500, 10000, 10500],
+        "longTermInvestments": [5000, 6000, 8000, 10000, 12000],
+        "otherNonCurrentAssets": [2500, 3000, 3500, 4000, 4500],
+        "totalNonCurrentAssets": [20000, 23500, 30000, 39000, 47000],
+        "totalAssets": [50630, 62580, 90000, 131500, 154000],
+        "accountsPayable": [2500, 4500, 8000, 12000, 10000],
+        "shortTermDebt": [1250, 1500, 2000, 2500, 2000],
+        "deferredRevenue": [600, 800, 1200, 1800, 1500],
+        "otherCurrentLiabilities": [2500, 3500, 5500, 8000, 7000],
+        "totalCurrentLiabilities": [6850, 10300, 16700, 24300, 20500],
+        "longTermDebt": [9700, 8500, 7500, 6500, 5500],
+        "otherNonCurrentLiabilities": [2500, 3000, 3500, 4000, 4000],
+        "totalNonCurrentLiabilities": [12200, 11500, 11000, 10500, 9500],
+        "totalLiabilities": [19050, 21800, 27700, 34800, 30000],
+        "totalShareholdersEquity": [31580, 40780, 62300, 96700, 124000],
+        "retainedEarnings": [15000, 25000, 45000, 75000, 100000],
+        "accumulatedOtherComprehensiveIncome": [-500, -400, -300, -200, -100]
+      },
+      "cashFlow": {
+        "years": ["2022-01", "2023-01", "2024-01", "2025-01", "2026-06"],
+        "operatingCashFlow": [11500, 28000, 55000, 85000, 48000],
+        "capitalExpenditure": [-1800, -2500, -4000, -6000, -3500],
+        "freeCashFlow": [9700, 25500, 51000, 79000, 44500],
+        "dividendsPaid": [-400, -500, -600, -800, -450],
+        "commonStockRepurchase": [-3500, -8000, -15000, -25000, -14000],
+        "debtRepayment": [-500, -1200, -1000, -1000, -500],
+        "netBorrowings": [500, 1200, 1000, 1000, 500],
+        "changeInCash": [9700, 25500, 51000, 79000, 44500]
+      }
+    },
+    "ratios": {
+      "peRatio": [35.2, 55.8, 48.5, 42.3, 38.5],
+      "roe": [0.277, 0.721, 0.899, 0.858, 0.387],
+      "grossMargin": [0.649, 0.729, 0.745, 0.745, 0.747],
+      "debtToEquity": [0.31, 0.21, 0.12, 0.07, 0.04],
+      "currentRatio": [4.47, 3.79, 3.59, 3.81, 5.22],
+      "returnOnAssets": [0.173, 0.470, 0.622, 0.631, 0.312],
+      "assetTurnover": [0.53, 0.97, 1.22, 1.25, 0.62],
+      "equityMultiplier": [1.60, 1.53, 1.44, 1.36, 1.24]
+    }
+  }
+}

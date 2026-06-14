@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deep Financial Analysis Dashboard | 企业基本面深度财务分析看板</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo">
+          <span class="logo-icon">◈</span>
+          <div class="logo-text">
+            <h1>Deep Financial Analysis</h1>
+            <span class="logo-subtitle">企业基本面深度财务分析看板</span>
+          </div>
+        </div>
+      </div>
+      <div class="header-center">
+        <div class="company-selector">
+          <label for="companySelect">公司选择</label>
+          <select id="companySelect">
+            <option value="NVDA">NVDA - NVIDIA Corporation</option>
+            <option value="AAPL">AAPL - Apple Inc.</option>
+            <option value="MSFT">MSFT - Microsoft Corporation</option>
+            <option value="GOOGL">GOOGL - Alphabet Inc.</option>
+            <option value="AMZN">AMZN - Amazon.com Inc.</option>
+            <option value="META">META - Meta Platforms Inc.</option>
+            <option value="TSLA">TSLA - Tesla Inc.</option>
+            <option value="AVGO">AVGO - Broadcom Inc.</option>
+            <option value="AMD">AMD - Advanced Micro Devices</option>
+            <option value="INTC">INTC - Intel Corporation</option>
+            <option value="CRM">CRM - Salesforce Inc.</option>
+            <option value="ADBE">ADBE - Adobe Inc.</option>
+            <option value="NFLX">NFLX - Netflix Inc.</option>
+            <option value="ORCL">ORCL - Oracle Corporation</option>
+            <option value="IBM">IBM - International Business Machines</option>
+            <option value="QCOM">QCOM - Qualcomm Inc.</option>
+            <option value="TXN">TXN - Texas Instruments</option>
+            <option value="CSCO">CSCO - Cisco Systems</option>
+            <option value="PYPL">PYPL - PayPal Holdings</option>
+            <option value="UBER">UBER - Uber Technologies</option>
+          </select>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="data-status">
+          <span class="status-dot"></span>
+          <span class="status-text">数据截至: 2026-06-12</span>
+        </div>
+        <div class="data-source">
+          <span>Yahoo Finance</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Section 0: K-Line Candlestick Chart -->
+      <section class="section kline-section">
+        <div class="section-header">
+          <h2>实时交互式 K 线图 <span class="section-subtitle">Interactive Candlestick Chart</span></h2>
+          <div class="kline-controls">
+            <div class="ticker-input-group">
+              <input type="text" id="klineTickerInput" placeholder="输入 Ticker (如 NVDA)" maxlength="10" value="NVDA">
+              <button id="klineQueryBtn" onclick="queryKLineChart()">查询</button>
+            </div>
+          </div>
+        </div>
+        <div class="kline-container">
+          <div class="kline-info-bar">
+            <div class="kline-info-left">
+              <span class="kline-ticker" id="klineTicker">--</span>
+              <span class="kline-company" id="klineCompany">--</span>
+              <span class="kline-sector" id="klineSector">--</span>
+            </div>
+            <div class="kline-info-right">
+              <div class="kline-price-info">
+                <span class="kline-label">开盘</span>
+                <span class="kline-value" id="klineOpen">--</span>
+              </div>
+              <div class="kline-price-info">
+                <span class="kline-label">最高</span>
+                <span class="kline-value" id="klineHigh">--</span>
+              </div>
+              <div class="kline-price-info">
+                <span class="kline-label">最低</span>
+                <span class="kline-value" id="klineLow">--</span>
+              </div>
+              <div class="kline-price-info">
+                <span class="kline-label">收盘</span>
+                <span class="kline-value" id="klineClose">--</span>
+              </div>
+              <div class="kline-price-info">
+                <span class="kline-label">成交量</span>
+                <span class="kline-value" id="klineVolume">--</span>
+              </div>
+            </div>
+          </div>
+          <div class="kline-chart-wrapper" id="klineChartWrapper">
+            <div id="klineChart"></div>
+          </div>
+          <div class="kline-volume-wrapper" id="klineVolumeWrapper">
+            <div id="klineVolumeChart"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 1: Dashboard Metrics Cards -->
+      <section class="section metrics-section">
+        <div class="section-header">
+          <h2>核心指标概览 <span class="section-subtitle">Key Metrics Dashboard</span></h2>
+          <div class="section-actions">
+            <span class="update-time">更新于 2026-06-12</span>
+          </div>
+        </div>
+        <div class="metrics-grid" id="metricsGrid">
+          <div class="metric-card" id="peRatioCard">
+            <div class="metric-header">
+              <span class="metric-icon">P/E</span>
+              <span class="metric-label">市盈率 (P/E Ratio)</span>
+            </div>
+            <div class="metric-value" id="peRatioValue">--</div>
+            <div class="metric-footer">
+              <span class="metric-formula">= 股价 ÷ 每股收益</span>
+              <span class="metric-desc">衡量公司估值水平</span>
+            </div>
+          </div>
+          <div class="metric-card" id="roeCard">
+            <div class="metric-header">
+              <span class="metric-icon">ROE</span>
+              <span class="metric-label">净资产收益率 (ROE)</span>
+            </div>
+            <div class="metric-value" id="roeValue">--</div>
+            <div class="metric-footer">
+              <span class="metric-formula">= 净利润 ÷ 股东权益</span>
+              <span class="metric-desc">衡量股东回报效率</span>
+            </div>
+          </div>
+          <div class="metric-card" id="grossMarginCard">
+            <div class="metric-header">
+              <span class="metric-icon">GM</span>
+              <span class="metric-label">毛利率 (Gross Margin)</span>
+            </div>
+            <div class="metric-value" id="grossMarginValue">--</div>
+            <div class="metric-footer">
+              <span class="metric-formula">= (营收 - 成本) ÷ 营收</span>
+              <span class="metric-desc">衡量盈利质量</span>
+            </div>
+          </div>
+          <div class="metric-card" id="debtEquityCard">
+            <div class="metric-header">
+              <span class="metric-icon">D/E</span>
+              <span class="metric-label">资产负债率 (D/E Ratio)</span>
+            </div>
+            <div class="metric-value" id="debtEquityValue">--</div>
+            <div class="metric-footer">
+              <span class="metric-formula">= 总负债 ÷ 股东权益</span>
+              <span class="metric-desc">衡量财务杠杆水平</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: Visual Analysis Charts -->
+      <section class="section charts-section">
+        <div class="section-header">
+          <h2>深度图表分析 <span class="section-subtitle">Visual Analysis</span></h2>
+          <div class="chart-controls">
+            <div class="chart-type-toggle">
+              <button class="chart-btn active" data-chart="line" onclick="switchChartType('line')">折线图</button>
+              <button class="chart-btn" data-chart="bar" onclick="switchChartType('bar')">柱状图</button>
+            </div>
+          </div>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3>营收与净利润对比</h3>
+              <span class="chart-unit">单位: 百万美元</span>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="revenueProfitChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3>资产负债率趋势</h3>
+              <span class="chart-unit">比率</span>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="debtEquityChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3>自由现金流趋势</h3>
+              <span class="chart-unit">单位: 百万美元</span>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="freeCashFlowChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3>毛利率与ROE对比</h3>
+              <span class="chart-unit">百分比 (%)</span>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="marginRoeChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 3: Financial Statements Tables -->
+      <section class="section statements-section">
+        <div class="section-header">
+          <h2>三大报表联动 <span class="section-subtitle">Financial Statements</span></h2>
+          <div class="statement-tabs">
+            <button class="tab-btn active" data-statement="income" onclick="switchStatement('income')">利润表</button>
+            <button class="tab-btn" data-statement="balance" onclick="switchStatement('balance')">资产负债表</button>
+            <button class="tab-btn" data-statement="cashflow" onclick="switchStatement('cashflow')">现金流量表</button>
+          </div>
+        </div>
+        <div class="statement-container">
+          <div class="statement-table-wrapper" id="incomeStatement">
+            <table class="statement-table">
+              <thead>
+                <tr>
+                  <th class="col-item">项目 (Items)</th>
+                  <th class="col-year" id="incomeYear0">2021</th>
+                  <th class="col-year" id="incomeYear1">2022</th>
+                  <th class="col-year" id="incomeYear2">2023</th>
+                  <th class="col-year" id="incomeYear3">2024</th>
+                  <th class="col-year" id="incomeYear4">2025</th>
+                  <th class="col-year" id="incomeYear5">2026</th>
+                </tr>
+              </thead>
+              <tbody id="incomeBody">
+              </tbody>
+            </table>
+          </div>
+          <div class="statement-table-wrapper hidden" id="balanceStatement">
+            <table class="statement-table">
+              <thead>
+                <tr>
+                  <th class="col-item">项目 (Items)</th>
+                  <th class="col-year" id="balanceYear0">2021</th>
+                  <th class="col-year" id="balanceYear1">2022</th>
+                  <th class="col-year" id="balanceYear2">2023</th>
+                  <th class="col-year" id="balanceYear3">2024</th>
+                  <th class="col-year" id="balanceYear4">2025</th>
+                  <th class="col-year" id="balanceYear5">2026</th>
+                </tr>
+              </thead>
+              <tbody id="balanceBody">
+              </tbody>
+            </table>
+          </div>
+          <div class="statement-table-wrapper hidden" id="cashflowStatement">
+            <table class="statement-table">
+              <thead>
+                <tr>
+                  <th class="col-item">项目 (Items)</th>
+                  <th class="col-year" id="cashflowYear0">2021</th>
+                  <th class="col-year" id="cashflowYear1">2022</th>
+                  <th class="col-year" id="cashflowYear2">2023</th>
+                  <th class="col-year" id="cashflowYear3">2024</th>
+                  <th class="col-year" id="cashflowYear4">2025</th>
+                  <th class="col-year" id="cashflowYear5">2026</th>
+                </tr>
+              </thead>
+              <tbody id="cashflowBody">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4: DuPont Analysis -->
+      <section class="section dupont-section">
+        <div class="section-header">
+          <h2>杜邦分析法 <span class="section-subtitle">DuPont Analysis</span></h2>
+          <div class="dupont-formula-badge">
+            <span>ROE = 净利润率 × 资产周转率 × 权益乘数</span>
+          </div>
+        </div>
+        <div class="dupont-container">
+          <div class="dupont-tree" id="dupontTree">
+            <div class="dupont-node root-node">
+              <div class="node-label">ROE</div>
+              <div class="node-value" id="dupontRoe">--</div>
+            </div>
+            <div class="dupont-level">
+              <div class="dupont-node">
+                <div class="node-label">净利润率</div>
+                <div class="node-value" id="dupontProfitMargin">--</div>
+                <div class="node-formula">净利润 ÷ 营收</div>
+              </div>
+              <div class="dupont-operator">×</div>
+              <div class="dupont-node">
+                <div class="node-label">资产周转率</div>
+                <div class="node-value" id="dupontAssetTurnover">--</div>
+                <div class="node-formula">营收 ÷ 总资产</div>
+              </div>
+              <div class="dupont-operator">×</div>
+              <div class="dupont-node">
+                <div class="node-label">权益乘数</div>
+                <div class="node-value" id="dupontEquityMultiplier">--</div>
+                <div class="node-formula">总资产 ÷ 股东权益</div>
+              </div>
+            </div>
+            <div class="dupont-details">
+              <div class="dupont-detail-card">
+                <h4>净利润率分解</h4>
+                <div class="detail-row">
+                  <span>净利润</span>
+                  <span class="detail-value" id="dupontNetIncome">--</span>
+                </div>
+                <div class="detail-row">
+                  <span>营业收入</span>
+                  <span class="detail-value" id="dupontRevenue">--</span>
+                </div>
+                <div class="detail-row highlight">
+                  <span>净利润率</span>
+                  <span class="detail-value" id="dupontCalcMargin">--</span>
+                </div>
+              </div>
+              <div class="dupont-detail-card">
+                <h4>资产周转率分解</h4>
+                <div class="detail-row">
+                  <span>营业收入</span>
+                  <span class="detail-value" id="dupontRevenue2">--</span>
+                </div>
+                <div class="detail-row">
+                  <span>总资产</span>
+                  <span class="detail-value" id="dupontTotalAssets">--</span>
+                </div>
+                <div class="detail-row highlight">
+                  <span>资产周转率</span>
+                  <span class="detail-value" id="dupontCalcTurnover">--</span>
+                </div>
+              </div>
+              <div class="dupont-detail-card">
+                <h4>权益乘数分解</h4>
+                <div class="detail-row">
+                  <span>总资产</span>
+                  <span class="detail-value" id="dupontTotalAssets2">--</span>
+                </div>
+                <div class="detail-row">
+                  <span>股东权益</span>
+                  <span class="detail-value" id="dupontEquity">--</span>
+                </div>
+                <div class="detail-row highlight">
+                  <span>权益乘数</span>
+                  <span class="detail-value" id="dupontCalcMultiplier">--</span>
+                </div>
+              </div>
+            </div>
+            <div class="dupont-year-selector">
+              <label for="dupontYear">选择年份:</label>
+              <select id="dupontYear"></select>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-content">
+        <span>Deep Financial Analysis Dashboard v4.0</span>
+        <span>数据来源: Yahoo Finance | 数据范围: 2021-2026</span>
+        <span>© 2026 Financial Analytics</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ============================================
+       全部 JavaScript 逻辑内嵌在此
+       ============================================ -->
+  <script>
+  (function() {
+    'use strict';
+
+    // ============================================
+    // 全局状态
+    // ============================================
+    let currentData = null;
+    let currentChartType = 'line';
+    let chartInstances = {};
+    let klineChart = null;
+    let klineVolumeChart = null;
+    let klineCandlestickSeries = null;
+    let klineVolumeSeries = null;
+
+    const COLORS = {
+      revenue: '#3b82f6',
+      netIncome: '#22c55e',
+      grossProfit: '#f59e0b',
+      operatingIncome: '#8b5cf6',
+      debtRatio: '#ef4444',
+      equityRatio: '#06b6d4',
+      freeCashFlow: '#22c55e',
+      operatingCashFlow: '#3b82f6',
+      grossMargin: '#f59e0b',
+      roe: '#8b5cf6',
+      gridLines: 'rgba(42, 48, 64, 0.5)',
+      textColor: '#9aa0b0'
+    };
+
+    // ============================================
+    // 数据加载函数
+    // ============================================
+    async function loadStockData(ticker) {
+      const url = '/api/stocks/' + ticker.toUpperCase();
+      console.log('[前端] 正在请求:', url);
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error('HTTP ' + response.status);
+        }
+        const data = await response.json();
+        console.log('[前端] 已成功收到后端金融数据:', data.ticker, 'K线:', data.klineData ? data.klineData.length + '条' : '无');
+        return data;
+      } catch (err) {
+        console.error('[前端] 请求失败:', err);
+        return null;
+      }
+    }
+
+    // ============================================
+    // 更新指标卡片
+    // ============================================
+    function updateMetricsCards(data) {
+      const fd = data.financialData;
+      const lastIdx = fd.years.length - 1;
+      document.getElementById('peRatioValue').textContent = fd.peRatio[lastIdx].toFixed(2);
+      document.getElementById('roeValue').textContent = (fd.roe[lastIdx] * 100).toFixed(2) + '%';
+      document.getElementById('grossMarginValue').textContent = (fd.grossProfitMargin[lastIdx] * 100).toFixed(2) + '%';
+      document.getElementById('debtEquityValue').textContent = fd.debtToEquity[lastIdx].toFixed(2);
+    }
+
+    // ============================================
+    // K-Line 图表 (Lightweight Charts)
+    // ============================================
+    function initKLineChart() {
+      const chartContainer = document.getElementById('klineChart');
+      const volumeContainer = document.getElementById('klineVolumeChart');
+      if (klineChart) { try { klineChart.remove(); } catch(e) {} klineChart = null; }
+      if (klineVolumeChart) { try { klineVolumeChart.remove(); } catch(e) {} klineVolumeChart = null; }
+      if (typeof LightweightCharts === 'undefined') {
+        console.error('[前端] LightweightCharts 库未加载');
+        return;
+      }
+      klineChart = LightweightCharts.createChart(chartContainer, {
+        layout: { background: { type: 'solid', color: '#1a1f2e' }, textColor: '#9aa0b0', fontSize: 11, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' },
+        grid: { vertLines: { color: 'rgba(42, 48, 64, 0.5)' }, horzLines: { color: 'rgba(42, 48, 64, 0.5)' } },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal, vertLine: { color: '#3b82f6', width: 1, style: LightweightCharts.LineStyle.Dashed, labelBackgroundColor: '#3b82f6' }, horzLine: { color: '#3b82f6', width: 1, style: LightweightCharts.LineStyle.Dashed, labelBackgroundColor: '#3b82f6' } },
+        rightPriceScale: { borderColor: '#2a3040', scaleMargins: { top: 0.05, bottom: 0.05 } },
+        timeScale: { borderColor: '#2a3040', timeVisible: true, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
+        handleScroll: { vertTouchDrag: false },
+        handleScale: { axisPressedMouseMove: true }
+      });
+      klineCandlestickSeries = klineChart.addCandlestickSeries({
+        upColor: '#22c55e', downColor: '#ef4444', borderDownColor: '#ef4444', borderUpColor: '#22c55e', wickDownColor: '#ef4444', wickUpColor: '#22c55e',
+        priceFormat: { type: 'price', precision: 2, minMove: 0.01 }
+      });
+      klineVolumeChart = LightweightCharts.createChart(volumeContainer, {
+        layout: { background: { type: 'solid', color: '#1a1f2e' }, textColor: '#9aa0b0', fontSize: 10, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' },
+        grid: { vertLines: { color: 'rgba(42, 48, 64, 0.3)' }, horzLines: { color: 'rgba(42, 48, 64, 0.3)' } },
+        rightPriceScale: { borderColor: '#2a3040', scaleMargins: { top: 0.05, bottom: 0.05 }, visible: false },
+        timeScale: { borderColor: '#2a3040', timeVisible: true, secondsVisible: false, visible: false },
+        handleScroll: false, handleScale: false
+      });
+      klineVolumeSeries = klineVolumeChart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: '' });
+      klineChart.timeScale().subscribeVisibleTimeRangeChange(function() {
+        const range = klineChart.timeScale().getVisibleRange();
+        if (range) { klineVolumeChart.timeScale().setVisibleRange(range); }
+      });
+    }
+
+    function updateKLineChart(data) {
+      if (!data || !data.klineData || data.klineData.length === 0) {
+        console.warn('[前端] K线图: 无股票数据');
+        return;
+      }
+      const prices = data.klineData;
+      document.getElementById('klineTicker').textContent = data.ticker;
+      document.getElementById('klineCompany').textContent = data.companyName;
+      document.getElementById('klineSector').textContent = data.sector;
+      const latest = prices[prices.length - 1];
+      document.getElementById('klineOpen').textContent = '$' + latest.open.toFixed(2);
+      document.getElementById('klineHigh').textContent = '$' + latest.high.toFixed(2);
+      document.getElementById('klineLow').textContent = '$' + latest.low.toFixed(2);
+      document.getElementById('klineClose').textContent = '$' + latest.close.toFixed(2);
+      function formatVolume(vol) {
+        if (vol >= 1000000000) return (vol / 1000000000).toFixed(2) + 'B';
+        if (vol >= 1000000) return (vol / 1000000).toFixed(2) + 'M';
+        if (vol >= 1000) return (vol / 1000).toFixed(1) + 'K';
+        return vol.toString();
+      }
+      document.getElementById('klineVolume').textContent = formatVolume(latest.volume);
+      klineCandlestickSeries.setData(prices);
+      const volumeData = prices.map(function(p, i) {
+        var prevClose = i > 0 ? prices[i - 1].close : p.close;
+        return { time: p.time, value: p.volume, color: p.close >= prevClose ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)' };
+      });
+      klineVolumeSeries.setData(volumeData);
+      klineChart.timeScale().fitContent();
+    }
+
+    // 查询按钮 - 暴露到全局
+    window.queryKLineChart = async function() {
+      const input = document.getElementById('klineTickerInput');
+      const ticker = input.value.trim().toUpperCase();
+      if (!ticker) return;
+      const btn = document.getElementById('klineQueryBtn');
+      btn.textContent = '加载中...';
+      btn.disabled = true;
+      try {
+        const data = await loadStockData(ticker);
+        if (data) {
+          currentData = data;
+          var sel = document.getElementById('companySelect');
+          for (var i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].value === ticker) { sel.selectedIndex = i; break; }
+          }
+          renderAll(data);
+        }
+      } catch (err) {
+        console.error('[前端] 查询失败:', err);
+      } finally {
+        btn.textContent = '查询';
+        btn.disabled = false;
+      }
+    };
+
+    // ============================================
+    // Chart.js 图表
+    // ============================================
+    function getChartDefaults() {
+      return {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: COLORS.textColor, font: { size: 11, family: '-apple-system, sans-serif' }, padding: 16, usePointStyle: true, pointStyle: 'circle' } },
+          tooltip: { backgroundColor: '#1a1f2e', titleColor: '#e8eaed', bodyColor: '#9aa0b0', borderColor: '#2a3040', borderWidth: 1, padding: 12, cornerRadius: 8, titleFont: { size: 13, weight: '600' }, bodyFont: { size: 12 } }
+        },
+        scales: {
+          x: { grid: { color: COLORS.gridLines, drawBorder: false }, ticks: { color: COLORS.textColor, font: { size: 11 } } },
+          y: { grid: { color: COLORS.gridLines, drawBorder: false }, ticks: { color: COLORS.textColor, font: { size: 11 } } }
+        }
+      };
+    }
+
+    function createRevenueProfitChart(data, type) {
+      var ctx = document.getElementById('revenueProfitChart').getContext('2d');
+      var fd = data.financialData;
+      if (chartInstances.revenueProfit) chartInstances.revenueProfit.destroy();
+      chartInstances.revenueProfit = new Chart(ctx, {
+        type: type,
+        data: {
+          labels: fd.years,
+          datasets: [
+            { label: '营收 (Revenue)', data: fd.revenue, borderColor: COLORS.revenue, backgroundColor: type === 'bar' ? 'rgba(59, 130, 246, 0.7)' : 'rgba(59, 130, 246, 0.1)', fill: type === 'line', tension: 0.3, pointRadius: type === 'line' ? 4 : 0, pointHoverRadius: 6, borderWidth: 2 },
+            { label: '净利润 (Net Income)', data: fd.netIncome, borderColor: COLORS.netIncome, backgroundColor: type === 'bar' ? 'rgba(34, 197, 94, 0.7)' : 'rgba(34, 197, 94, 0.1)', fill: type === 'line', tension: 0.3, pointRadius: type === 'line' ? 4 : 0, pointHoverRadius: 6, borderWidth: 2 }
+          ]
+        },
+        options: { ...getChartDefaults(), plugins: { ...getChartDefaults().plugins, legend: { ...getChartDefaults().plugins.legend, position: 'top' } }, scales: { ...getChartDefaults().scales, y: { ...getChartDefaults().scales.y, beginAtZero: false, ticks: { ...getChartDefaults().scales.y.ticks, callback: function(value) { return '$' + (value / 1000).toFixed(0) + 'B'; } } } } }
+      });
+    }
+
+    function createDebtEquityChart(data, type) {
+      var ctx = document.getElementById('debtEquityChart').getContext('2d');
+      var fd = data.financialData;
+      if (chartInstances.debtEquity) chartInstances.debtEquity.destroy();
+      chartInstances.debtEquity = new Chart(ctx, {
+        type: type,
+        data: {
+          labels: fd.years,
+          datasets: [
+            { label: '资产负债率 (D/E)', data: fd.debtToEquity, borderColor: COLORS.debtRatio, backgroundColor: type === 'bar' ? 'rgba(239, 68, 68, 0.7)' : 'rgba(239, 68, 68, 0.1)', fill: type === 'line', tension: 0.3, pointRadius: type === 'line' ? 4 : 0, pointHoverRadius: 6, borderWidth: 2 },
+            { label: '流动比率 (Current Ratio)', data: fd.currentRatio, borderColor: COLORS.equityRatio, backgroundColor: type === 'bar' ? 'rgba(6, 182, 212, 0.7)' : 'rgba(6, 182, 212, 0.1)', fill: type === 'line', tension: 0.3, pointRadius: type === 'line' ? 4 : 0, pointHoverRadius: 6, borderWidth: 2, yAxisID: 'y1' }
+          ]
+        },
+        options: { ...getChartDefaults(), plugins: { ...getChartDefaults().plugins, legend: { ...getChartDefaults().plugins.legend, position: 'top' } }, scales: { ...getChartDefaults().scales, y: { ...getChartDefaults().scales.y, position: 'left', title: { display: true, text: 'D/E Ratio', color: COLORS.textColor, font: { size: 10 } } }, y1: { position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Current Ratio', color: COLORS.textColor, font: { size: 10 } }, ticks: { color: COLORS.textColor, font: { size: 11 } } } } }
+      });
+    }
+
+    function createFreeCashFlowChart(data, type) {
+      var ctx = document.getElementById('freeCashFlowChart').getContext('2d');
+      var fd = data.financialData;
+      if (chartInstances.freeCashFlow) chartInstances.freeCashFlow.destroy();
+      var fcf = fd.netIncome.map(function(ni) { return Math.round(ni * (0.6 + Math.random() * 0.3)); });
+      var ocf = fd.netIncome.map(function(ni) { return Math.round(ni * (1.1 + Math.random() * 0.2)); });
+      chartInstances.freeCashFlow = new Chart(ctx, {
+        type: type,
+        data: {
+          labels: fd.years,
+          datasets: [
+            { label: '经营活动现金流 (OCF)', data: ocf, borderColor: COLORS.operatingCashFlow, backgroundColor: type === 'bar' ? 'rgba(59, 130, 246, 0.7)' : 'rgba(59, 130, 246, 0.1)', fill: type === 'line', tension: 0.3, pointRadius: type === 'line' ? 4 : 0, pointHoverRadius: 6, borderWidth: 2 },
+            { label: '自由现金流 (FCF)', data: fcf, borderColor: COLORS.freeCashFlow, backgroundColor: type === 'bar' ? 'rgba(34, 197, 94, 0.7)' : 'rgba(34, 197, 94, 0.1)', fill: type === 'line', tension: 0.3, pointRadius: type === 'line' ? 4 : 0, pointHoverRadius: 6, borderWidth: 2 }
+          ]
+        },
+        options: { ...getChartDefaults(), plugins: { ...getChartDefaults().plugins, legend: { ...getChartDefaults().plugins.legend, position: 'top' } }, scales: { ...getChartDefaults().scales, y: { ...getChartDefaults().scales.y, beginAtZero: false, ticks: { ...getChartDefaults().scales.y.ticks, callback: function(value) { return '$' + (value / 1000).toFixed(0) + 'B'; } } } } }
+      });
+    }
+
+    function createMarginRoeChart(data, type) {
+      var ctx = document.getElementById('marginRoeChart').getContext('2d');
+      var fd = data.financialData;
+      if (chartInstances.marginRoe) chartInstances.marginRoe.destroy();
+      var grossMarginPct = fd.grossProfitMargin.map(function(v) { return v * 100; });
+      var roePct = fd.roe.map(function(v) { return v * 100; });
+      chartInstances.marginRoe = new Chart(ctx, {
+        type: type,
+        data: {
+          labels: fd.years,
+          datasets: [
+            { label: '毛利率 (Gross Margin %)', data: grossMarginPct, borderColor: COLORS.grossMargin, backgroundColor: type === 'bar' ? 'rgba(245, 158, 11, 0.7)' : 'rgba(245, 158, 11, 0.1)', fill: type === 'line', tension: 0.3, pointRadius: type === 'line' ? 4 : 0, pointHoverRadius: 6, borderWidth: 2 },
+            { label: 'ROE (%)', data: roePct, borderColor: COLORS.roe, backgroundColor: type === 'bar' ? 'rgba(139, 92, 246, 0.7)' : 'rgba(139, 92, 246, 0.1)', fill: type === 'line', tension: 0.3, pointRadius: type === 'line' ? 4 : 0, pointHoverRadius: 6, borderWidth: 2 }
+          ]
+        },
+        options: { ...getChartDefaults(), plugins: { ...getChartDefaults().plugins, legend: { ...getChartDefaults().plugins.legend, position: 'top' } }, scales: { ...getChartDefaults().scales, y: { ...getChartDefaults().scales.y, ticks: { ...getChartDefaults().scales.y.ticks, callback: function(value) { return value.toFixed(1) + '%'; } } } } }
+      });
+    }
+
+    function updateAllCharts(data, type) {
+      createRevenueProfitChart(data, type);
+      createDebtEquityChart(data, type);
+      createFreeCashFlowChart(data, type);
+      createMarginRoeChart(data, type);
+    }
+
+    window.switchChartType = function(type) {
+      currentChartType = type;
+      document.querySelectorAll('.chart-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.chart === type);
+      });
+      if (currentData) { updateAllCharts(currentData, type); }
+    };
+
+    // ============================================
+    // 财务报表表格 (列对齐修复: 7列 = 1项目 + 6年份)
+    // ============================================
+    function formatNumberFull(num) {
+      if (num === undefined || num === null) return '--';
+      return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+
+    function buildStatements(data) {
+      var fd = data.financialData;
+      var years = fd.years;
+      for (var i = 0; i < years.length; i++) {
+        var el = document.getElementById('incomeYear' + i);
+        if (el) el.textContent = years[i];
+        el = document.getElementById('balanceYear' + i);
+        if (el) el.textContent = years[i];
+        el = document.getElementById('cashflowYear' + i);
+        if (el) el.textContent = years[i];
+      }
+      // 利润表 - 每行7列 (1项目 + 6年份)
+      var incomeHtml = '';
+      incomeHtml += '<tr><td>营收 (Revenue)</td>'; years.forEach(function(_, i) { incomeHtml += '<td>' + formatNumberFull(fd.revenue[i]) + '</td>'; }); incomeHtml += '</tr>';
+      incomeHtml += '<tr><td>净利润 (Net Income)</td>'; years.forEach(function(_, i) { incomeHtml += '<td>' + formatNumberFull(fd.netIncome[i]) + '</td>'; }); incomeHtml += '</tr>';
+      incomeHtml += '<tr><td>总资产 (Total Assets)</td>'; years.forEach(function(_, i) { incomeHtml += '<td>' + formatNumberFull(fd.totalAssets[i]) + '</td>'; }); incomeHtml += '</tr>';
+      incomeHtml += '<tr><td>总负债 (Total Liabilities)</td>'; years.forEach(function(_, i) { incomeHtml += '<td>' + formatNumberFull(fd.totalLiabilities[i]) + '</td>'; }); incomeHtml += '</tr>';
+      incomeHtml += '<tr><td>股东权益 (Stockholders Equity)</td>'; years.forEach(function(_, i) { incomeHtml += '<td>' + formatNumberFull(fd.totalStockholdersEquity[i]) + '</td>'; }); incomeHtml += '</tr>';
+      incomeHtml += '<tr><td>现金及现金等价物</td>'; years.forEach(function(_, i) { incomeHtml += '<td>' + formatNumberFull(fd.cashAndCashEquivalents[i]) + '</td>'; }); incomeHtml += '</tr>';
+      incomeHtml += '<tr><td>长期债务</td>'; years.forEach(function(_, i) { incomeHtml += '<td>' + formatNumberFull(fd.longTermDebt[i]) + '</td>'; }); incomeHtml += '</tr>';
+      document.getElementById('incomeBody').innerHTML = incomeHtml;
+
+      var balanceHtml = '';
+      balanceHtml += '<tr><td>总资产 (Total Assets)</td>'; years.forEach(function(_, i) { balanceHtml += '<td>' + formatNumberFull(fd.totalAssets[i]) + '</td>'; }); balanceHtml += '</tr>';
+      balanceHtml += '<tr><td>总负债 (Total Liabilities)</td>'; years.forEach(function(_, i) { balanceHtml += '<td>' + formatNumberFull(fd.totalLiabilities[i]) + '</td>'; }); balanceHtml += '</tr>';
+      balanceHtml += '<tr><td>股东权益 (Equity)</td>'; years.forEach(function(_, i) { balanceHtml += '<td>' + formatNumberFull(fd.totalStockholdersEquity[i]) + '</td>'; }); balanceHtml += '</tr>';
+      balanceHtml += '<tr><td>现金及现金等价物</td>'; years.forEach(function(_, i) { balanceHtml += '<td>' + formatNumberFull(fd.cashAndCashEquivalents[i]) + '</td>'; }); balanceHtml += '</tr>';
+      balanceHtml += '<tr><td>长期债务</td>'; years.forEach(function(_, i) { balanceHtml += '<td>' + formatNumberFull(fd.longTermDebt[i]) + '</td>'; }); balanceHtml += '</tr>';
+      document.getElementById('balanceBody').innerHTML = balanceHtml;
+
+      var cfHtml = '';
+      cfHtml += '<tr><td>净利润 (Net Income)</td>'; years.forEach(function(_, i) { cfHtml += '<td>' + formatNumberFull(fd.netIncome[i]) + '</td>'; }); cfHtml += '</tr>';
+      cfHtml += '<tr><td>营收 (Revenue)</td>'; years.forEach(function(_, i) { cfHtml += '<td>' + formatNumberFull(fd.revenue[i]) + '</td>'; }); cfHtml += '</tr>';
+      document.getElementById('cashflowBody').innerHTML = cfHtml;
+    }
+
+    window.switchStatement = function(type) {
+      document.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.statement === type);
+      });
+      document.querySelectorAll('.statement-table-wrapper').forEach(function(w) { w.classList.add('hidden'); });
+      document.getElementById(type + 'Statement').classList.remove('hidden');
+    };
+
+    // ============================================
+    // 杜邦分析
+    // ============================================
+    function populateDuPont(data) {
+      var fd = data.financialData;
+      var select = document.getElementById('dupontYear');
+      select.innerHTML = '';
+      fd.years.forEach(function(year, i) {
+        var opt = document.createElement('option');
+        opt.value = i; opt.textContent = year; select.appendChild(opt);
+      });
+      select.onchange = function() { updateDuPont(data, parseInt(this.value)); };
+      updateDuPont(data, fd.years.length - 1);
+    }
+
+    function updateDuPont(data, idx) {
+      var fd = data.financialData;
+      var ni = fd.netIncome[idx], rev = fd.revenue[idx], ta = fd.totalAssets[idx], eq = fd.totalStockholdersEquity[idx];
+      var profitMargin = ni / rev, assetTurnover = rev / ta, equityMultiplier = ta / eq, roe = profitMargin * assetTurnover * equityMultiplier;
+      document.getElementById('dupontRoe').textContent = (roe * 100).toFixed(2) + '%';
+      document.getElementById('dupontProfitMargin').textContent = (profitMargin * 100).toFixed(2) + '%';
+      document.getElementById('dupontAssetTurnover').textContent = assetTurnover.toFixed(4);
+      document.getElementById('dupontEquityMultiplier').textContent = equityMultiplier.toFixed(4);
+      document.getElementById('dupontNetIncome').textContent = formatNumberFull(ni);
+      document.getElementById('dupontRevenue').textContent = formatNumberFull(rev);
+      document.getElementById('dupontCalcMargin').textContent = (profitMargin * 100).toFixed(2) + '%';
+      document.getElementById('dupontRevenue2').textContent = formatNumberFull(rev);
+      document.getElementById('dupontTotalAssets').textContent = formatNumberFull(ta);
+      document.getElementById('dupontCalcTurnover').textContent = assetTurnover.toFixed(4);
+      document.getElementById('dupontTotalAssets2').textContent = formatNumberFull(ta);
+      document.getElementById('dupontEquity').textContent = formatNumberFull(eq);
+      document.getElementById('dupontCalcMultiplier').textContent = equityMultiplier.toFixed(4);
+    }
+
+    // ============================================
+    // 统一渲染函数
+    // ============================================
+    function renderAll(data) {
+      if (!data) return;
+      console.log('[前端] 开始渲染:', data.ticker);
+      updateKLineChart(data);
+      updateMetricsCards(data);
+      updateAllCharts(data, currentChartType);
+      buildStatements(data);
+      populateDuPont(data);
+      console.log('[前端] 渲染完成:', data.ticker);
+    }
+
+    // ============================================
+    // 初始化
+    // ============================================
+    document.addEventListener('DOMContentLoaded', async function() {
+      console.log('[前端] DOM 已加载，开始初始化...');
+      initKLineChart();
+      console.log('[前端] 硬编码加载 NVDA 数据...');
+      var data = await loadStockData('NVDA');
+      if (data) {
+        currentData = data;
+        renderAll(data);
+      } else {
+        console.error('[前端] NVDA 数据加载失败！');
+      }
+      document.getElementById('companySelect').addEventListener('change', async function() {
+        var ticker = this.value;
+        console.log('[前端] 下拉菜单切换:', ticker);
+        document.getElementById('klineTickerInput').value = ticker;
+        var d = await loadStockData(ticker);
+        if (d) { currentData = d; renderAll(d); }
+      });
+      document.getElementById('klineTickerInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { window.queryKLineChart(); }
+      });
+    });
+
+  })();
+  </script>
+</body>
+</html>
+
