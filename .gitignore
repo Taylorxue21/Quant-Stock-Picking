@@ -15,7 +15,12 @@ desktop.ini
 *.app
 *.icns
 *.PNG
-"Windows 11"
-"Euro Truck Simulator 2 Demo.app"
-"Euro Truck Simulator 2.app"
-"足球经理26 试玩版.app"
+Windows 11
+Euro Truck Simulator 2 Demo.app
+Euro Truck Simulator 2.app
+足球经理26 试玩版.app
+
+# Unrelated project files
+fetch_sp500_data.py
+data.json
+number_loop.py
