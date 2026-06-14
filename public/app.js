@@ -50,6 +50,21 @@ function showUserError(message) {
   setTimeout(() => { banner.style.display = 'none'; }, 10000);
 }
 
+function showChartAreaError(message) {
+  // 在 K 线图区域显示错误提示
+  const chartWrapper = document.getElementById('klineChartWrapper');
+  if (!chartWrapper) return;
+  // 移除旧的错误提示
+  const oldTip = document.getElementById('chartErrorTip');
+  if (oldTip) oldTip.remove();
+  const tip = document.createElement('div');
+  tip.id = 'chartErrorTip';
+  tip.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);border-radius:12px;padding:20px 28px;text-align:center;z-index:100;max-width:400px;';
+  tip.innerHTML = '<div style="font-size:40px;margin-bottom:10px;">⚠️</div><div style="color:#ef4444;font-size:15px;font-weight:600;line-height:1.5;">' + message + '</div>';
+  chartWrapper.style.position = 'relative';
+  chartWrapper.appendChild(tip);
+}
+
 async function loadCompanyData(ticker) {
   try {
     const cleanTicker = ticker.trim().toUpperCase();
@@ -89,9 +104,10 @@ async function loadStockData(ticker) {
     const response = await fetch(`/api/stocks/${cleanTicker}`);
     if (response.status === 429) {
       const data = await response.json().catch(() => ({}));
-      const msg = data.error || '当前数据源访问人数过多被限流，请稍后刷新重试';
+      const msg = data.error || '当前公网 IP 被 Yahoo 限流，请稍后重试';
       console.warn('[前端] 限流 (429):', cleanTicker, msg);
       showUserError('⚠️ ' + msg);
+      showChartAreaError('当前公网 IP 被 Yahoo 限流，请稍后重试');
       return null;
     }
     if (response.status === 404) {

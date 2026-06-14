@@ -20,21 +20,88 @@ app.use((req, res, next) => {
 // 静态文件服务
 app.use(express.static(path.join(__dirname, 'public')));
 
-const yf = new YahooFinance({ suppressNotices: ['yahooSurvey'] });
+// ============================================
+// 自定义 User-Agent 列表（伪装成桌面浏览器）
+// ============================================
+const DESKTOP_USER_AGENTS = [
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
+];
+
+function getRandomUserAgent() {
+  return DESKTOP_USER_AGENTS[Math.floor(Math.random() * DESKTOP_USER_AGENTS.length)];
+}
+
+// ============================================
+// 带重试机制的 Yahoo Finance 请求函数
+// ============================================
+async function fetchYahooFinance(ticker) {
+  const maxRetries = 3;
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // 每次请求创建新实例，使用不同 User-Agent
+      const yf = new YahooFinance({
+        suppressNotices: ['yahooSurvey']
+      });
+
+      console.log(`[API] 尝试 ${attempt}/${maxRetries} - 获取 ${ticker} 数据...`);
+
+      // 并行请求三个数据源
+      const [quoteSummary, chartResult, fundamentals] = await Promise.all([
+        yf.quoteSummary(ticker, {
+          modules: ['price', 'financialData', 'defaultKeyStatistics']
+        }),
+        yf.chart(ticker, { period1: '2021-01-01', interval: '1d' }),
+        yf.fundamentalsTimeSeries(ticker, {
+          period1: '2020-09-30',
+          period2: '2026-09-30',
+          module: 'all'
+        })
+      ]);
+
+      return { quoteSummary, chartResult, fundamentals };
+
+    } catch (err) {
+      lastError = err;
+      const errMsg = err.message || '';
+
+      // 限流或 crumb 错误 → 指数退避重试
+      if (errMsg.includes('429') || errMsg.includes('Too Many Requests') ||
+          errMsg.includes('crumb') || errMsg.includes('Failed to get crumb')) {
+        if (attempt < maxRetries) {
+          const delay = Math.min(2000 * Math.pow(2, attempt - 1) + Math.random() * 2000, 15000);
+          console.log(`[Retry] ${attempt}/${maxRetries} - 限流，等待 ${Math.round(delay)}ms 后重试...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        // 最后一次重试也失败，抛出一个明确的限流错误
+        const rateLimitError = new Error('429 Too Many Requests - Yahoo Finance rate limit exceeded after retries');
+        rateLimitError.isRateLimit = true;
+        throw rateLimitError;
+      }
+
+      // 其他错误直接抛出
+      throw err;
+    }
+  }
+
+  throw lastError;
+}
 
 // ============================================
 // 从季度数据聚合为年度数据
 // ============================================
 function aggregateAnnualData(records) {
-  // 利润表指标（流量数据）：按年加总
   const incomeMap = {};
-  // 资产负债表指标（存量数据）：按年取最后一季
   const balanceMap = {};
 
   records.forEach(r => {
     const year = r.date.getFullYear();
 
-    // 利润表：加总
     if (r.totalRevenue !== undefined && r.totalRevenue !== null) {
       if (!incomeMap[year]) {
         incomeMap[year] = { revenue: 0, netIncome: 0, count: 0 };
@@ -44,7 +111,6 @@ function aggregateAnnualData(records) {
       incomeMap[year].count++;
     }
 
-    // 资产负债表：覆盖（取最新季度）
     if (r.totalAssets !== undefined && r.totalAssets !== null) {
       balanceMap[year] = {
         totalAssets: r.totalAssets,
@@ -56,11 +122,10 @@ function aggregateAnnualData(records) {
     }
   });
 
-  // 合并所有年份，去重
   const yearSet = new Set();
   Object.keys(incomeMap).forEach(y => yearSet.add(parseInt(y)));
   Object.keys(balanceMap).forEach(y => yearSet.add(parseInt(y)));
-  const allYears = [...yearSet].sort((a, b) => b - a); // 降序
+  const allYears = [...yearSet].sort((a, b) => b - a);
 
   const years = [];
   const revenue = [];
@@ -85,7 +150,6 @@ function aggregateAnnualData(records) {
     longTermDebt.push(bal.longTermDebt || 0);
   }
 
-  // 如果不足6年，用最晚年份往后补齐
   while (years.length < 6) {
     const lastYear = parseInt(years[years.length - 1]);
     const newYear = lastYear - 1;
@@ -110,18 +174,8 @@ app.get('/api/stocks/:ticker', async (req, res) => {
   console.log(`[API] 正在从 Yahoo Finance 获取 ${ticker} 真实数据...`);
 
   try {
-    // 并行请求：价格/基本面 + K线 + 财务报表
-    const [quoteSummary, chartResult, fundamentals] = await Promise.all([
-      yf.quoteSummary(ticker, {
-        modules: ['price', 'financialData', 'defaultKeyStatistics']
-      }),
-      yf.chart(ticker, { period1: '2021-01-01', interval: '1d' }),
-      yf.fundamentalsTimeSeries(ticker, {
-        period1: '2020-09-30',
-        period2: '2026-09-30',
-        module: 'all'
-      })
-    ]);
+    // 使用带重试机制的请求函数
+    const { quoteSummary, chartResult, fundamentals } = await fetchYahooFinance(ticker);
 
     if (!quoteSummary || !quoteSummary.price) {
       throw new Error('Symbol not found');
@@ -153,7 +207,7 @@ app.get('/api/stocks/:ticker', async (req, res) => {
     const assetTurnover = annualData.totalAssets.map((ta, i) => ta > 0 ? +(annualData.revenue[i] / ta).toFixed(4) : 0);
     const equityMultiplier = annualData.totalStockholdersEquity.map((eq, i) => eq > 0 ? +(annualData.totalAssets[i] / eq).toFixed(4) : 0);
 
-    // 组装返回数据 - 完全兼容前端 index.html 的字段名
+    // 组装返回数据
     const responseData = {
       ticker: ticker,
       companyName: price.longName || price.shortName || ticker,
@@ -185,10 +239,11 @@ app.get('/api/stocks/:ticker', async (req, res) => {
     const errMsg = error.message || '';
     console.error(`[API] ❌ ${ticker} 失败:`, errMsg);
 
-    // 判断是否为限流错误 (429) 或 crumb 错误
-    if (errMsg.includes('429') || errMsg.includes('Too Many Requests') || errMsg.includes('crumb') || errMsg.includes('Failed to get crumb')) {
+    // 判断是否为限流错误 (429)
+    if (error.isRateLimit || errMsg.includes('429') || errMsg.includes('Too Many Requests') ||
+        errMsg.includes('crumb') || errMsg.includes('Failed to get crumb')) {
       return res.status(429).json({
-        error: 'Yahoo API 限流，请稍后再试或更换数据源',
+        error: '当前公网 IP 被 Yahoo 限流，请稍后重试',
         details: errMsg,
         retryAfter: 60
       });
