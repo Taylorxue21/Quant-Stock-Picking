@@ -3,3 +3,19 @@ node_modules/
 .DS_Store
 *.log
 npm-debug.log*
+
+# Desktop junk
+.localized
+.npm-cache/
+_update-notifier-last-checked
+desktop.ini
+*.png
+*.pdf
+*.mov
+*.app
+*.icns
+*.PNG
+"Windows 11"
+"Euro Truck Simulator 2 Demo.app"
+"Euro Truck Simulator 2.app"
+"足球经理26 试玩版.app"
