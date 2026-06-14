@@ -8,6 +8,16 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// ============================================
+// 全局请求日志中间件（用于 Render 调试）
+// ============================================
+app.use((req, res, next) => {
+  console.log('[Server Hit]', req.method, req.url);
+  next();
+});
+
+// 静态文件服务
 app.use(express.static(path.join(__dirname, 'public')));
 
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey'] });
