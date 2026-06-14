@@ -37,7 +37,12 @@ const COLORS = {
 
 async function loadCompanyData(ticker) {
   try {
-    const response = await fetch(`/api/stocks/${ticker}`);
+    const cleanTicker = ticker.trim().toUpperCase();
+    const response = await fetch(`/api/stocks/${cleanTicker}`);
+    if (response.status === 404) {
+      console.warn('[前端] 股票代码未找到 (404):', cleanTicker);
+      return null;
+    }
     if (!response.ok) throw new Error('Failed to load data');
     companyData = await response.json();
     return companyData;
@@ -49,7 +54,12 @@ async function loadCompanyData(ticker) {
 
 async function loadStockData(ticker) {
   try {
-    const response = await fetch(`/api/stocks/${ticker}`);
+    const cleanTicker = ticker.trim().toUpperCase();
+    const response = await fetch(`/api/stocks/${cleanTicker}`);
+    if (response.status === 404) {
+      console.warn('[前端] 股票代码未找到 (404):', cleanTicker);
+      return null;
+    }
     if (!response.ok) throw new Error('Failed to load stock data');
     return await response.json();
   } catch (error) {
