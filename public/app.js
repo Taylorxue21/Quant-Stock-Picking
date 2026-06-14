@@ -37,7 +37,7 @@ const COLORS = {
 
 async function loadCompanyData(ticker) {
   try {
-    const response = await fetch(`/api/company/${ticker}`);
+    const response = await fetch(`/api/stocks/${ticker}`);
     if (!response.ok) throw new Error('Failed to load data');
     companyData = await response.json();
     return companyData;
@@ -49,7 +49,7 @@ async function loadCompanyData(ticker) {
 
 async function loadStockData(ticker) {
   try {
-    const response = await fetch(`/api/stock/${ticker}`);
+    const response = await fetch(`/api/stocks/${ticker}`);
     if (!response.ok) throw new Error('Failed to load stock data');
     return await response.json();
   } catch (error) {
