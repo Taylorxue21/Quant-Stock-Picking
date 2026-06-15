@@ -170,6 +170,9 @@ async function getFinancials(ticker) {
     }
 
     console.log(`[FMP] ${ticker} 利润表: ${incomeData.length} 年`);
+    // ===== 打印 /stable/ 接口真实字段名 =====
+    console.log('[FMP Stable 利润表第一条真实结构]:', JSON.stringify(incomeData[0] || {}));
+    console.log('[FMP Stable 利润表第一条Keys]:', Object.keys(incomeData[0] || {}));
 
     // FMP 返回按年份降序（最新在前），反转成升序
     const sorted = [...incomeData].reverse();
@@ -182,10 +185,12 @@ async function getFinancials(ticker) {
       const year = item?.calendarYear || item?.date?.substring(0, 4);
       if (!year) continue;
       years.push(year);
-      revenue.push(item?.revenue ?? 0);
-      netIncome.push(item?.netIncome ?? 0);
+      // /stable/ 接口字段名可能与旧版不同，尝试多种可能
+      revenue.push(item?.revenue ?? item?.Revenue ?? item?.totalRevenue ?? 0);
+      netIncome.push(item?.netIncome ?? item?.NetIncome ?? item?.netIncomeLoss ?? 0);
     }
 
+    console.log(`[FMP] ${ticker} 利润表解析结果: years=${JSON.stringify(years)}, revenue=${JSON.stringify(revenue)}, netIncome=${JSON.stringify(netIncome)}`);
     return { years, revenue, netIncome };
 
   } catch (err) {
@@ -236,6 +241,9 @@ async function getMetrics(ticker) {
     }
 
     console.log(`[FMP] ${ticker} 关键指标: ${metricsData.length} 年`);
+    // ===== 打印 /stable/ 接口真实字段名 =====
+    console.log('[FMP Stable 关键指标第一条真实结构]:', JSON.stringify(metricsData[0] || {}));
+    console.log('[FMP Stable 关键指标第一条Keys]:', Object.keys(metricsData[0] || {}));
 
     // FMP 返回按年份降序（最新在前），反转成升序
     const sorted = [...metricsData].reverse();
@@ -259,19 +267,22 @@ async function getMetrics(ticker) {
       if (!year) continue;
 
       years.push(year);
-      peRatio.push(item?.peRatio ?? 0);
-      roe.push(item?.roe ?? 0);
-      grossProfitMargin.push(item?.grossProfitMargin ?? 0);
-      debtToEquity.push(item?.debtToEquity ?? 0);
-      currentRatio.push(item?.currentRatio ?? 0);
-      assetTurnover.push(item?.assetTurnover ?? 0);
-      equityMultiplier.push(item?.equityMultiplier ?? 0);
-      totalAssets.push(item?.enterpriseValue ?? 0);
-      totalLiabilities.push(item?.totalDebt ?? 0);
-      totalStockholdersEquity.push(item?.totalSharesOutstanding ?? 0);
-      cashAndCashEquivalents.push(item?.freeCashFlowPerShare ?? 0);
-      longTermDebt.push(item?.longTermDebt ?? 0);
+      // /stable/ 接口字段名可能与旧版不同，尝试多种可能
+      peRatio.push(item?.peRatio ?? item?.priceEarningsRatio ?? item?.PE ?? 0);
+      roe.push(item?.roe ?? item?.returnOnEquity ?? item?.ROE ?? 0);
+      grossProfitMargin.push(item?.grossProfitMargin ?? item?.grossMargin ?? item?.GrossProfitMargin ?? 0);
+      debtToEquity.push(item?.debtToEquity ?? item?.DebtToEquity ?? item?.totalDebtToEquity ?? 0);
+      currentRatio.push(item?.currentRatio ?? item?.CurrentRatio ?? 0);
+      assetTurnover.push(item?.assetTurnover ?? item?.AssetTurnover ?? 0);
+      equityMultiplier.push(item?.equityMultiplier ?? item?.EquityMultiplier ?? 0);
+      totalAssets.push(item?.enterpriseValue ?? item?.EnterpriseValue ?? 0);
+      totalLiabilities.push(item?.totalDebt ?? item?.TotalDebt ?? 0);
+      totalStockholdersEquity.push(item?.totalSharesOutstanding ?? item?.bookValuePerShare ?? 0);
+      cashAndCashEquivalents.push(item?.freeCashFlowPerShare ?? item?.FreeCashFlowPerShare ?? 0);
+      longTermDebt.push(item?.longTermDebt ?? item?.LongTermDebt ?? 0);
     }
+
+    console.log(`[FMP] ${ticker} 关键指标解析结果: years=${JSON.stringify(years)}, peRatio=${JSON.stringify(peRatio)}, roe=${JSON.stringify(roe)}`);
 
     return {
       years,
