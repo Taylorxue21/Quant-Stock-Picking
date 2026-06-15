@@ -159,7 +159,7 @@ async function getFinancials(ticker) {
     console.log(`[FMP] 请求利润表: ${ticker}`);
 
     const res = await axios.get(url, {
-      params: { symbol: ticker, limit: 6, apikey: FMP_API_KEY },
+      params: { symbol: ticker, limit: 5, apikey: FMP_API_KEY },
       timeout: 15000
     });
     const incomeData = res.data;
@@ -202,16 +202,16 @@ async function getFinancials(ticker) {
   }
 }
 
-// 全零兜底
+// 全零兜底（5 年）
 function fallbackFinancials() {
   const currentYear = new Date().getFullYear();
   const years = [];
-  for (let i = 0; i < 6; i++) years.push((currentYear - i).toString());
+  for (let i = 0; i < 5; i++) years.push((currentYear - i).toString());
   return {
-    years, revenue: [0,0,0,0,0,0], netIncome: [0,0,0,0,0,0],
-    totalAssets: [0,0,0,0,0,0], totalLiabilities: [0,0,0,0,0,0],
-    totalStockholdersEquity: [0,0,0,0,0,0],
-    cashAndCashEquivalents: [0,0,0,0,0,0], longTermDebt: [0,0,0,0,0,0]
+    years, revenue: [0,0,0,0,0], netIncome: [0,0,0,0,0],
+    totalAssets: [0,0,0,0,0], totalLiabilities: [0,0,0,0,0],
+    totalStockholdersEquity: [0,0,0,0,0],
+    cashAndCashEquivalents: [0,0,0,0,0], longTermDebt: [0,0,0,0,0]
   };
 }
 
@@ -230,7 +230,7 @@ async function getMetrics(ticker) {
     console.log(`[FMP] 请求关键指标: ${ticker}`);
 
     const res = await axios.get(url, {
-      params: { symbol: ticker, limit: 6, apikey: FMP_API_KEY },
+      params: { symbol: ticker, limit: 5, apikey: FMP_API_KEY },
       timeout: 15000
     });
     const metricsData = res.data;
