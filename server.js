@@ -66,86 +66,94 @@ async function getCompanyProfile(ticker) {
 }
 
 // ============================================
-// 获取 K 线数据（1 年日线，直接 axios 请求）
+// 获取 K 线数据（带自动降级和全链路日志）
 // ============================================
 async function getKlineData(ticker) {
-  try {
-    // 严格 10 位 UNIX 秒级时间戳，1 年跨度
-    const to = Math.floor(Date.now() / 1000);
-    const from = to - (365 * 24 * 60 * 60); // 1 年前
+  // 尝试的时间窗口列表（年）：先试 1 年，如果 no_data 则试更短
+  const windows = [1, 0.5, 0.25]; // 1年, 半年, 3个月
 
-    console.log(`[API 请求准备] 发送参数: symbol=${ticker}, resolution=D, from=${from}, to=${to}`);
+  for (const years of windows) {
+    try {
+      // 严格 10 位 UNIX 秒级时间戳
+      const to = Math.floor(Date.now() / 1000);
+      const from = Math.floor(to - (years * 365 * 24 * 60 * 60));
 
-    // 直接使用 axios.get 而非 finnhubGet，确保参数传递无误
-    const klineRes = await axios.get('https://finnhub.io/api/v1/stock/candle', {
-      params: {
-        symbol: ticker,
-        resolution: 'D',
-        from: from,
-        to: to,
-        token: FINNHUB_API_KEY
-      },
-      timeout: 15000
-    });
+      console.log(`[API 请求准备] symbol=${ticker}, resolution=D, from=${from}, to=${to}, 跨度=${years}年`);
 
-    const data = klineRes.data;
-    console.log('[Finnhub 原始返回]', JSON.stringify(data).substring(0, 200) + '...');
+      const klineRes = await axios.get('https://finnhub.io/api/v1/stock/candle', {
+        params: {
+          symbol: ticker,
+          resolution: 'D',
+          from: from,
+          to: to,
+          token: FINNHUB_API_KEY
+        },
+        timeout: 15000
+      });
 
-    // 处理无数据情况
-    if (!data || data.s === 'no_data') {
-      console.warn(`[API] ${ticker} K线无数据: s=${data?.s}`);
-      return [];
-    }
+      // ===== 全链路裸数据监控 =====
+      console.log('[Finnhub 绝对原始返回]:', JSON.stringify(klineRes.data));
+      console.log('[后端数据检查] data.s状态:', klineRes.data?.s,
+        '| data.c是否存在:', !!klineRes.data?.c,
+        '| data.c长度:', klineRes.data?.c?.length,
+        '| data.t长度:', klineRes.data?.t?.length,
+        '| data.o长度:', klineRes.data?.o?.length);
 
-    // 检查数据是否有效
-    if (data.s !== 'ok') {
-      console.warn(`[API] ${ticker} K线状态异常: s=${data?.s}`);
-      return [];
-    }
+      const data = klineRes.data;
 
-    // Finnhub 返回按列拆分的数组: { t: [], o: [], h: [], l: [], c: [], v: [], s: 'ok' }
-    const timestamps = data.t;
-    const opens = data.o;
-    const highs = data.h;
-    const lows = data.l;
-    const closes = data.c;
-    const volumes = data.v;
-
-    if (!Array.isArray(timestamps) || timestamps.length === 0) {
-      console.warn(`[API] ${ticker} K线时间戳数组为空`);
-      return [];
-    }
-
-    const length = timestamps.length;
-    const result = [];
-    for (let i = 0; i < length; i++) {
-      const open = opens[i];
-      const high = highs[i];
-      const low = lows[i];
-      const close = closes[i];
-      const volume = volumes[i];
-      const timestamp = timestamps[i];
-
-      // 只保留有完整 OHLC 数据的有效条目
-      if (open != null && high != null && low != null && close != null && timestamp != null) {
-        result.push({
-          time: new Date(timestamp * 1000).toISOString().split('T')[0],
-          open: open,
-          high: high,
-          low: low,
-          close: close,
-          volume: volume ?? 0
-        });
+      // 处理无数据 → 自动降级到更短时间窗口
+      if (!data || data.s === 'no_data') {
+        console.warn(`[API] ${ticker} K线无数据 (跨度${years}年)，尝试更短窗口...`);
+        continue; // 进入下一个更短的时间窗口
       }
+
+      // 检查数据是否有效
+      if (data.s !== 'ok') {
+        console.warn(`[API] ${ticker} K线状态异常: s=${data?.s}`);
+        continue;
+      }
+
+      // 检查核心数组
+      if (!Array.isArray(data.t) || data.t.length === 0) {
+        console.warn(`[API] ${ticker} K线时间戳数组为空`);
+        continue;
+      }
+
+      // 组装数据
+      const length = data.t.length;
+      const result = [];
+      for (let i = 0; i < length; i++) {
+        const open = data.o?.[i];
+        const high = data.h?.[i];
+        const low = data.l?.[i];
+        const close = data.c?.[i];
+        const volume = data.v?.[i];
+        const timestamp = data.t[i];
+
+        if (open != null && high != null && low != null && close != null && timestamp != null) {
+          result.push({
+            time: new Date(timestamp * 1000).toISOString().split('T')[0],
+            open: open,
+            high: high,
+            low: low,
+            close: close,
+            volume: volume ?? 0
+          });
+        }
+      }
+
+      console.log(`[后端整理完毕] 成功组装 ${years} 年 K 线数据: ${result.length} 条`);
+      return result;
+
+    } catch (err) {
+      console.warn(`[API] 获取 ${ticker} K线失败 (跨度${years}年):`, err.message);
+      continue; // 尝试下一个窗口
     }
-
-    console.log(`[后端整理完毕] 成功组装 1 年 K 线数据: ${result.length} 条`);
-    return result;
-
-  } catch (err) {
-    console.warn(`[API] 获取 ${ticker} K线失败:`, err.message);
-    return [];
   }
+
+  // 所有窗口都失败
+  console.warn(`[API] ${ticker} K线: 所有时间窗口均无数据`);
+  return [];
 }
 
 // ============================================
