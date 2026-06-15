@@ -107,13 +107,21 @@ async function getKlineData(ticker) {
     const sliceCount = Math.min(data.length, 252);
     const recentData = data.slice(0, sliceCount);
 
-    // 链式处理：filter → sort 强制升序 → map 强转数值 + 截断日期
+    // 链式处理：filter（去重）→ sort 强制升序 → map 强转数值 + 截断日期
+    const uniqueDates = new Set();
     const result = recentData
-      .filter(item => item && item.date && item.open != null && item.close != null)
-      // 【最关键】强制按时间绝对升序排列！
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .filter(item => {
+        // 剔除无效数据
+        if (!item || !item.date || item.open == null || item.close == null) return false;
+        const dateStr = item.date.split('T')[0];
+        // 【核心排雷】如果这一天的数据已经存在，直接抛弃，防止图表库崩溃！
+        if (uniqueDates.has(dateStr)) return false;
+        uniqueDates.add(dateStr);
+        return true;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) // 绝对升序
       .map(item => ({
-        time: item.date.split('T')[0], // 强行截断，确保严格的 YYYY-MM-DD
+        time: item.date.split('T')[0],
         open: Number(item.open) || 0,
         high: Number(item.high) || 0,
         low: Number(item.low) || 0,
@@ -439,27 +447,52 @@ app.get('/api/stocks/:ticker', async (req, res) => {
     }
 
     // ===== 暴力兜底 0.00 指标：直接从原始 API 数据中计算 =====
-    // 如果 mergedPE 全是 0，尝试从 metrics 原始数据直接提取
+    // 市盈率 (PE)：从 Finnhub quote 获取当前 PE
     const hasRealPE = mergedPE.some(v => v > 0);
-    if (!hasRealPE && metrics?.peRatio?.length > 0) {
-      // 取最新一年的 peRatio
-      const latestPE = Number(metrics.peRatio[metrics.peRatio.length - 1]) || 0;
-      if (latestPE > 0) {
-        for (let i = 0; i < mergedPE.length; i++) mergedPE[i] = latestPE;
+    if (!hasRealPE) {
+      try {
+        // 从 Finnhub quote 获取 pe
+        const quoteData = await finnhubGet('/quote', { symbol: ticker }).catch(() => ({}));
+        const quotePE = Number(quoteData?.pe) || 0;
+        if (quotePE > 0) {
+          for (let i = 0; i < mergedPE.length; i++) mergedPE[i] = quotePE;
+          console.log(`[FMP 兜底] ${ticker} PE 从 Finnhub quote 获取: ${quotePE}`);
+        } else if (metrics?.peRatio?.length > 0) {
+          const latestPE = Number(metrics.peRatio[metrics.peRatio.length - 1]) || 0;
+          if (latestPE > 0) {
+            for (let i = 0; i < mergedPE.length; i++) mergedPE[i] = latestPE;
+          }
+        }
+      } catch (e) {
+        // 静默失败
       }
     }
 
+    // 毛利率 (GM)：强算 (revenue - costOfRevenue) / revenue
     const hasRealGM = mergedGrossMargin.some(v => v > 0);
     if (!hasRealGM) {
-      // 从 income-statement 计算毛利率 = (revenue - costOfRevenue) / revenue
-      // 重新获取 incomeData 进行计算（financialData 中已有 revenue）
-      // 使用 finalRevenue 和 finalNetIncome 近似，但最好从原始数据算
-      // 尝试从 metrics 取 grossProfitRatio
-      if (metrics?.grossProfitMargin?.length > 0) {
-        const latestGM = Number(metrics.grossProfitMargin[metrics.grossProfitMargin.length - 1]) || 0;
-        if (latestGM > 0) {
-          for (let i = 0; i < mergedGrossMargin.length; i++) mergedGrossMargin[i] = latestGM;
+      // 从 financialData 的 revenue 和 netIncome 无法直接算毛利率
+      // 需要 costOfRevenue，从 income-statement 原始数据获取
+      try {
+        const incomeRaw = await axios.get('https://financialmodelingprep.com/stable/income-statement', {
+          params: { symbol: ticker, limit: 1, apikey: FMP_API_KEY },
+          timeout: 10000
+        }).catch(() => ({ data: [] }));
+        const incomeArr = incomeRaw.data;
+        if (Array.isArray(incomeArr) && incomeArr.length > 0) {
+          const latest = incomeArr[0];
+          const rev = Number(latest?.revenue) || 1;
+          const costRev = Number(latest?.costOfRevenue) || 0;
+          const grossProfit = Number(latest?.grossProfit) || 0;
+          // 优先取 grossProfitRatio，如果没有则强算
+          const gm = Number(latest?.grossProfitRatio) || (grossProfit > 0 ? grossProfit / rev : (rev - costRev > 0 ? (rev - costRev) / rev : 0));
+          if (gm > 0) {
+            for (let i = 0; i < mergedGrossMargin.length; i++) mergedGrossMargin[i] = gm;
+            console.log(`[FMP 兜底] ${ticker} GM 强算: ${gm} (grossProfit=${grossProfit}, revenue=${rev})`);
+          }
         }
+      } catch (e) {
+        // 静默失败
       }
     }
 
