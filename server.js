@@ -68,7 +68,7 @@ async function getCompanyProfile(ticker) {
 }
 
 // ============================================
-// 获取 K 线数据（使用 FMP API）
+// 获取 K 线数据（使用 FMP /stable/ 接口）
 // ============================================
 async function getKlineData(ticker) {
   try {
@@ -80,40 +80,45 @@ async function getKlineData(ticker) {
       return [];
     }
 
-    const url = `https://financialmodelingprep.com/api/v3/historical-price-full/${ticker}?apikey=${FMP_API_KEY}`;
-    console.log('[FMP 诊断] 正在请求:', url.replace(FMP_API_KEY, '***'));
+    // 使用最新的 /stable/ 接口，通过 params 传参
+    const url = 'https://financialmodelingprep.com/stable/historical-price-eod/full';
+    console.log('[FMP 诊断] 正在请求:', url, '| symbol:', ticker);
 
-    const res = await axios.get(url, { timeout: 15000 });
+    const res = await axios.get(url, {
+      params: {
+        symbol: ticker,
+        apikey: FMP_API_KEY
+      },
+      timeout: 15000
+    });
+
+    // /stable/ 接口直接返回扁平数组，不再嵌套 { historical: [...] }
     const data = res.data;
+    console.log('[FMP 诊断] 返回类型:', typeof data, '| 是数组?', Array.isArray(data), '| 长度:', data?.length);
 
-    // FMP 返回: { symbol: "AAPL", historical: [{ date, open, high, low, close, volume }] }
-    const historical = data?.historical;
-
-    if (!Array.isArray(historical) || historical.length === 0) {
+    if (!Array.isArray(data) || data.length === 0) {
       console.warn(`[FMP] ${ticker} 无历史数据`);
       return [];
     }
 
-    console.log(`[FMP] ${ticker} 原始数据: ${historical.length} 条`);
+    console.log(`[FMP] ${ticker} 原始数据: ${data.length} 条`);
 
-    // 截取最近 1 年（约 252 个交易日）
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    // 截取最近 252 个交易日（约 1 年）
+    const sliceCount = Math.min(data.length, 252);
+    const recentData = data.slice(0, sliceCount);
 
     const result = [];
-    for (const item of historical) {
-      const itemDate = new Date(item.date);
-      if (itemDate < oneYearAgo) continue; // 只保留最近 1 年
-
+    for (const item of recentData) {
       const open = item.open;
       const high = item.high;
       const low = item.low;
       const close = item.close;
       const volume = item.volume;
+      const date = item.date;
 
-      if (open != null && high != null && low != null && close != null) {
+      if (open != null && high != null && low != null && close != null && date != null) {
         result.push({
-          time: item.date,
+          time: date,
           open: open,
           high: high,
           low: low,
@@ -123,10 +128,10 @@ async function getKlineData(ticker) {
       }
     }
 
-    // FMP 返回按日期降序（最新在前），前端可能需要升序
+    // FMP 返回按日期降序（最新在前），前端需要升序
     result.reverse();
 
-    console.log(`[后端整理完毕] 成功组装 K 线数据: ${result.length} 条 (FMP)`);
+    console.log(`[后端整理完毕] 成功组装 K 线数据: ${result.length} 条 (FMP /stable/)`);
     return result;
 
   } catch (err) {
