@@ -447,21 +447,34 @@ app.get('/api/stocks/:ticker', async (req, res) => {
     }
 
     // ===== 暴力兜底 0.00 指标：直接从原始 API 数据中计算 =====
-    // 市盈率 (PE)：从 Finnhub quote 获取当前 PE
+    // 市盈率 (PE)：优先 FMP → Finnhub quote → 强算 (最新收盘价 / EPS)
     const hasRealPE = mergedPE.some(v => v > 0);
     if (!hasRealPE) {
       try {
-        // 从 Finnhub quote 获取 pe
+        // 第一层：从 Finnhub quote 获取 pe
         const quoteData = await finnhubGet('/quote', { symbol: ticker }).catch(() => ({}));
-        const quotePE = Number(quoteData?.pe) || 0;
-        if (quotePE > 0) {
-          for (let i = 0; i < mergedPE.length; i++) mergedPE[i] = quotePE;
-          console.log(`[FMP 兜底] ${ticker} PE 从 Finnhub quote 获取: ${quotePE}`);
-        } else if (metrics?.peRatio?.length > 0) {
-          const latestPE = Number(metrics.peRatio[metrics.peRatio.length - 1]) || 0;
-          if (latestPE > 0) {
-            for (let i = 0; i < mergedPE.length; i++) mergedPE[i] = latestPE;
+        let peValue = Number(quoteData?.pe) || 0;
+
+        // 第二层：从 metrics 取最新 peRatio
+        if (peValue <= 0 && metrics?.peRatio?.length > 0) {
+          peValue = Number(metrics.peRatio[metrics.peRatio.length - 1]) || 0;
+        }
+
+        // 第三层：强算 PE = 最新收盘价 / EPS
+        if (peValue <= 0) {
+          const latestClose = Array.isArray(klineData) && klineData.length > 0
+            ? Number(klineData[klineData.length - 1]?.close) || 0
+            : 0;
+          const eps = Number(quoteData?.eps) || 0;
+          if (latestClose > 0 && eps > 0) {
+            peValue = Number((latestClose / eps).toFixed(2));
+            console.log(`[FMP 兜底] ${ticker} PE 强算: ${peValue} (close=${latestClose}, eps=${eps})`);
           }
+        }
+
+        if (peValue > 0) {
+          for (let i = 0; i < mergedPE.length; i++) mergedPE[i] = peValue;
+          console.log(`[FMP 兜底] ${ticker} PE 最终值: ${peValue}`);
         }
       } catch (e) {
         // 静默失败
