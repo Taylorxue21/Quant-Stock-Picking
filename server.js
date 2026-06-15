@@ -74,7 +74,7 @@ async function getKlineData(ticker) {
 
   for (const years of windows) {
     try {
-      // 严格 10 位 UNIX 秒级时间戳
+      // 严格 10 位 UNIX 秒级时间戳 — 动态计算，绝不写死
       const to = Math.floor(Date.now() / 1000);
       const from = Math.floor(to - (years * 365 * 24 * 60 * 60));
 
