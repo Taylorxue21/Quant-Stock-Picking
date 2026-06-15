@@ -145,7 +145,7 @@ async function getKlineData(ticker) {
 }
 
 // ============================================
-// 获取财务报表（使用 FMP income-statement 接口）
+// 获取财务报表（使用 FMP /stable/income-statement）
 // ============================================
 async function getFinancials(ticker) {
   try {
@@ -154,11 +154,14 @@ async function getFinancials(ticker) {
       return fallbackFinancials();
     }
 
-    // FMP 利润表接口：返回按年份降序排列的数组
-    const url = `https://financialmodelingprep.com/api/v3/income-statement/${ticker}?limit=6&apikey=${FMP_API_KEY}`;
+    // 使用 /stable/ 接口，通过 params 传参
+    const url = 'https://financialmodelingprep.com/stable/income-statement';
     console.log(`[FMP] 请求利润表: ${ticker}`);
 
-    const res = await axios.get(url, { timeout: 15000 });
+    const res = await axios.get(url, {
+      params: { symbol: ticker, limit: 6, apikey: FMP_API_KEY },
+      timeout: 15000
+    });
     const incomeData = res.data;
 
     if (!Array.isArray(incomeData) || incomeData.length === 0) {
@@ -183,22 +186,7 @@ async function getFinancials(ticker) {
       netIncome.push(item?.netIncome ?? 0);
     }
 
-    // 用 revenue 的年份作为基准，构建完整的 6 年数据
-    // 注意：FMP income-statement 不包含资产负债表字段
-    // 我们使用 revenue/netIncome 的真实数据，其他字段用 0 填充
-    // 但前端需要 totalAssets, totalLiabilities 等，我们从 key-metrics 获取
-    // 先返回利润表数据，然后在主路由中补充
-
-    return {
-      years,
-      revenue,
-      netIncome,
-      totalAssets: [],
-      totalLiabilities: [],
-      totalStockholdersEquity: [],
-      cashAndCashEquivalents: [],
-      longTermDebt: []
-    };
+    return { years, revenue, netIncome };
 
   } catch (err) {
     const status = err.response?.status || 'unknown';
@@ -223,7 +211,7 @@ function fallbackFinancials() {
 }
 
 // ============================================
-// 获取估值指标（使用 FMP key-metrics 接口）
+// 获取估值指标（使用 FMP /stable/key-metrics）
 // ============================================
 async function getMetrics(ticker) {
   try {
@@ -232,11 +220,14 @@ async function getMetrics(ticker) {
       return fallbackMetrics();
     }
 
-    // FMP key-metrics 接口：返回按年份降序排列的数组
-    const url = `https://financialmodelingprep.com/api/v3/key-metrics/${ticker}?limit=6&apikey=${FMP_API_KEY}`;
+    // 使用 /stable/ 接口，通过 params 传参
+    const url = 'https://financialmodelingprep.com/stable/key-metrics';
     console.log(`[FMP] 请求关键指标: ${ticker}`);
 
-    const res = await axios.get(url, { timeout: 15000 });
+    const res = await axios.get(url, {
+      params: { symbol: ticker, limit: 6, apikey: FMP_API_KEY },
+      timeout: 15000
+    });
     const metricsData = res.data;
 
     if (!Array.isArray(metricsData) || metricsData.length === 0) {
@@ -275,9 +266,9 @@ async function getMetrics(ticker) {
       currentRatio.push(item?.currentRatio ?? 0);
       assetTurnover.push(item?.assetTurnover ?? 0);
       equityMultiplier.push(item?.equityMultiplier ?? 0);
-      totalAssets.push(item?.enterpriseValue ?? 0); // 近似
+      totalAssets.push(item?.enterpriseValue ?? 0);
       totalLiabilities.push(item?.totalDebt ?? 0);
-      totalStockholdersEquity.push(item?.totalSharesOutstanding ?? 0); // 近似
+      totalStockholdersEquity.push(item?.totalSharesOutstanding ?? 0);
       cashAndCashEquivalents.push(item?.freeCashFlowPerShare ?? 0);
       longTermDebt.push(item?.longTermDebt ?? 0);
     }
@@ -296,7 +287,7 @@ async function getMetrics(ticker) {
       totalStockholdersEquity,
       cashAndCashEquivalents,
       longTermDebt,
-      currentPrice: 0 // 从 quote 获取
+      currentPrice: 0
     };
 
   } catch (err) {
