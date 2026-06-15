@@ -66,26 +66,35 @@ async function getCompanyProfile(ticker) {
 }
 
 // ============================================
-// 获取 K 线数据（防御性）
+// 获取 K 线数据（5 年日线）
 // ============================================
 async function getKlineData(ticker) {
   try {
-    const now = Math.floor(Date.now() / 1000);
-    const twoYearsAgo = now - 2 * 365 * 24 * 60 * 60;
+    // 严格使用 10 位 UNIX 秒级时间戳
+    const to = Math.floor(Date.now() / 1000);
+    const from = to - 5 * 365 * 24 * 60 * 60; // 5 年前
+    console.log(`[API] ${ticker} K线请求参数: from=${from}, to=${to}, resolution=D`);
+
     const data = await finnhubGet('/stock/candle', {
       symbol: ticker,
       resolution: 'D',
-      from: twoYearsAgo,
-      to: now
+      from: from,
+      to: to
     });
 
-    // 防御：检查数据有效性
-    if (!data || data.s !== 'ok') {
+    // 处理无数据情况
+    if (!data || data.s === 'no_data') {
       console.warn(`[API] ${ticker} K线无数据: s=${data?.s}`);
       return [];
     }
 
-    // 防御：确保数组存在且长度一致
+    // 检查数据是否有效
+    if (data.s !== 'ok') {
+      console.warn(`[API] ${ticker} K线状态异常: s=${data?.s}`);
+      return [];
+    }
+
+    // Finnhub 返回按列拆分的数组: { t: [], o: [], h: [], l: [], c: [], v: [], s: 'ok' }
     const timestamps = data?.t;
     const opens = data?.o;
     const highs = data?.h;
@@ -94,6 +103,7 @@ async function getKlineData(ticker) {
     const volumes = data?.v;
 
     if (!Array.isArray(timestamps) || timestamps.length === 0) {
+      console.warn(`[API] ${ticker} K线时间戳数组为空`);
       return [];
     }
 
@@ -101,19 +111,26 @@ async function getKlineData(ticker) {
     const result = [];
     for (let i = 0; i < length; i++) {
       const open = opens?.[i];
+      const high = highs?.[i];
+      const low = lows?.[i];
       const close = closes?.[i];
-      // 只保留有开盘价和收盘价的有效数据
-      if (open != null && close != null) {
+      const volume = volumes?.[i];
+      const timestamp = timestamps[i];
+
+      // 只保留有完整 OHLC 数据的有效条目
+      if (open != null && high != null && low != null && close != null && timestamp != null) {
         result.push({
-          time: new Date((timestamps[i] || 0) * 1000).toISOString().split('T')[0],
+          time: new Date(timestamp * 1000).toISOString().split('T')[0],
           open: open,
-          high: highs?.[i] ?? open,
-          low: lows?.[i] ?? open,
+          high: high,
+          low: low,
           close: close,
-          volume: volumes?.[i] ?? 0
+          volume: volume ?? 0
         });
       }
     }
+
+    console.log(`[后端整理完毕] 成功组装 5 年 K 线数据: ${result.length} 条`);
     return result;
 
   } catch (err) {
