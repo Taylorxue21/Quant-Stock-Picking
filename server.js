@@ -145,175 +145,176 @@ async function getKlineData(ticker) {
 }
 
 // ============================================
-// 获取财务报表（防御性）
+// 获取财务报表（使用 FMP income-statement 接口）
 // ============================================
 async function getFinancials(ticker) {
   try {
-    // 并行获取三大报表，每个失败都返回空数组
-    const [incomeData, balanceData] = await Promise.all([
-      finnhubGet('/stock/financials-reported', {
-        symbol: ticker, statement: 'IC', freq: 'annual'
-      }).catch(() => ({ data: [] })),
-      finnhubGet('/stock/financials-reported', {
-        symbol: ticker, statement: 'BS', freq: 'annual'
-      }).catch(() => ({ data: [] }))
-    ]);
+    if (!FMP_API_KEY) {
+      console.warn(`[FMP] FMP_API_KEY 未设置，无法获取财务报表`);
+      return fallbackFinancials();
+    }
 
-    const incomeReports = Array.isArray(incomeData?.data) ? incomeData.data : [];
-    const balanceReports = Array.isArray(balanceData?.data) ? balanceData.data : [];
+    // FMP 利润表接口：返回按年份降序排列的数组
+    const url = `https://financialmodelingprep.com/api/v3/income-statement/${ticker}?limit=6&apikey=${FMP_API_KEY}`;
+    console.log(`[FMP] 请求利润表: ${ticker}`);
 
-    const yearMap = {};
+    const res = await axios.get(url, { timeout: 15000 });
+    const incomeData = res.data;
 
-    // 处理利润表 — 防御性遍历
-    incomeReports.forEach(report => {
-      try {
-        const year = report?.year;
-        if (!year) return;
-        if (!yearMap[year]) yearMap[year] = {};
-        const ic = report?.report?.ic || {};
-        // 使用可选链安全提取
-        const revItem = ic?.['SalesRevenueNet']?.[0]?.value
-          || ic?.['RevenueFromContractWithCustomerExcludingAssessedTax']?.[0]?.value
-          || ic?.['Revenues']?.[0]?.value
-          || 0;
-        const niItem = ic?.['NetIncomeLoss']?.[0]?.value
-          || ic?.['ProfitLoss']?.[0]?.value
-          || 0;
-        yearMap[year].revenue = parseFloat(revItem) || 0;
-        yearMap[year].netIncome = parseFloat(niItem) || 0;
-      } catch (e) {
-        // 单行解析失败跳过
-      }
-    });
+    if (!Array.isArray(incomeData) || incomeData.length === 0) {
+      console.warn(`[FMP] ${ticker} 利润表无数据`);
+      return fallbackFinancials();
+    }
 
-    // 处理资产负债表 — 防御性遍历
-    balanceReports.forEach(report => {
-      try {
-        const year = report?.year;
-        if (!year) return;
-        if (!yearMap[year]) yearMap[year] = {};
-        const bs = report?.report?.bs || {};
-        yearMap[year].totalAssets = parseFloat(bs?.['Assets']?.[0]?.value
-          || bs?.['AssetsCurrent']?.[0]?.value || 0);
-        yearMap[year].totalLiabilities = parseFloat(bs?.['Liabilities']?.[0]?.value
-          || bs?.['LiabilitiesCurrent']?.[0]?.value || 0);
-        yearMap[year].totalEquity = parseFloat(bs?.['StockholdersEquity']?.[0]?.value
-          || bs?.['EquityAttributableToParent']?.[0]?.value
-          || bs?.['Equity']?.[0]?.value || 0);
-        yearMap[year].cash = parseFloat(bs?.['CashAndCashEquivalentsAtCarryingValue']?.[0]?.value
-          || bs?.['Cash']?.[0]?.value || 0);
-        yearMap[year].longTermDebt = parseFloat(bs?.['LongTermDebtNoncurrent']?.[0]?.value
-          || bs?.['LongTermDebt']?.[0]?.value || 0);
-      } catch (e) {
-        // 单行解析失败跳过
-      }
-    });
+    console.log(`[FMP] ${ticker} 利润表: ${incomeData.length} 年`);
 
-    // 排序年份
-    const sortedYears = Object.keys(yearMap)
-      .map(y => parseInt(y))
-      .filter(y => !isNaN(y))
-      .sort((a, b) => b - a)
-      .slice(0, 6);
+    // FMP 返回按年份降序（最新在前），反转成升序
+    const sorted = [...incomeData].reverse();
 
     const years = [];
     const revenue = [];
     const netIncome = [];
+
+    for (const item of sorted) {
+      const year = item?.calendarYear || item?.date?.substring(0, 4);
+      if (!year) continue;
+      years.push(year);
+      revenue.push(item?.revenue ?? 0);
+      netIncome.push(item?.netIncome ?? 0);
+    }
+
+    // 用 revenue 的年份作为基准，构建完整的 6 年数据
+    // 注意：FMP income-statement 不包含资产负债表字段
+    // 我们使用 revenue/netIncome 的真实数据，其他字段用 0 填充
+    // 但前端需要 totalAssets, totalLiabilities 等，我们从 key-metrics 获取
+    // 先返回利润表数据，然后在主路由中补充
+
+    return {
+      years,
+      revenue,
+      netIncome,
+      totalAssets: [],
+      totalLiabilities: [],
+      totalStockholdersEquity: [],
+      cashAndCashEquivalents: [],
+      longTermDebt: []
+    };
+
+  } catch (err) {
+    const status = err.response?.status || 'unknown';
+    const errData = err.response?.data || {};
+    console.error(`[FMP ${status} 详情] 利润表 ${ticker}:`, JSON.stringify(errData));
+    console.warn(`[FMP] 获取 ${ticker} 财务报表失败:`, err.message);
+    return fallbackFinancials();
+  }
+}
+
+// 全零兜底
+function fallbackFinancials() {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let i = 0; i < 6; i++) years.push((currentYear - i).toString());
+  return {
+    years, revenue: [0,0,0,0,0,0], netIncome: [0,0,0,0,0,0],
+    totalAssets: [0,0,0,0,0,0], totalLiabilities: [0,0,0,0,0,0],
+    totalStockholdersEquity: [0,0,0,0,0,0],
+    cashAndCashEquivalents: [0,0,0,0,0,0], longTermDebt: [0,0,0,0,0,0]
+  };
+}
+
+// ============================================
+// 获取估值指标（使用 FMP key-metrics 接口）
+// ============================================
+async function getMetrics(ticker) {
+  try {
+    if (!FMP_API_KEY) {
+      console.warn(`[FMP] FMP_API_KEY 未设置，无法获取估值指标`);
+      return fallbackMetrics();
+    }
+
+    // FMP key-metrics 接口：返回按年份降序排列的数组
+    const url = `https://financialmodelingprep.com/api/v3/key-metrics/${ticker}?limit=6&apikey=${FMP_API_KEY}`;
+    console.log(`[FMP] 请求关键指标: ${ticker}`);
+
+    const res = await axios.get(url, { timeout: 15000 });
+    const metricsData = res.data;
+
+    if (!Array.isArray(metricsData) || metricsData.length === 0) {
+      console.warn(`[FMP] ${ticker} 关键指标无数据`);
+      return fallbackMetrics();
+    }
+
+    console.log(`[FMP] ${ticker} 关键指标: ${metricsData.length} 年`);
+
+    // FMP 返回按年份降序（最新在前），反转成升序
+    const sorted = [...metricsData].reverse();
+
+    const years = [];
+    const peRatio = [];
+    const roe = [];
+    const grossProfitMargin = [];
+    const debtToEquity = [];
+    const currentRatio = [];
+    const assetTurnover = [];
+    const equityMultiplier = [];
     const totalAssets = [];
     const totalLiabilities = [];
     const totalStockholdersEquity = [];
     const cashAndCashEquivalents = [];
     const longTermDebt = [];
 
-    sortedYears.forEach(year => {
-      const d = yearMap[year] || {};
-      years.push(year.toString());
-      revenue.push(d.revenue || 0);
-      netIncome.push(d.netIncome || 0);
-      totalAssets.push(d.totalAssets || 0);
-      totalLiabilities.push(d.totalLiabilities || 0);
-      totalStockholdersEquity.push(d.totalEquity || 0);
-      cashAndCashEquivalents.push(d.cash || 0);
-      longTermDebt.push(d.longTermDebt || 0);
-    });
+    for (const item of sorted) {
+      const year = item?.calendarYear || item?.date?.substring(0, 4);
+      if (!year) continue;
 
-    // 如果不足 6 年，用最后一年补齐
-    while (years.length < 6 && years.length > 0) {
-      const lastYear = parseInt(years[years.length - 1]);
-      const newYear = lastYear - 1;
-      years.push(newYear.toString());
-      revenue.push(revenue[revenue.length - 1] || 0);
-      netIncome.push(netIncome[netIncome.length - 1] || 0);
-      totalAssets.push(totalAssets[totalAssets.length - 1] || 0);
-      totalLiabilities.push(totalLiabilities[totalLiabilities.length - 1] || 0);
-      totalStockholdersEquity.push(totalStockholdersEquity[totalStockholdersEquity.length - 1] || 0);
-      cashAndCashEquivalents.push(cashAndCashEquivalents[cashAndCashEquivalents.length - 1] || 0);
-      longTermDebt.push(longTermDebt[longTermDebt.length - 1] || 0);
+      years.push(year);
+      peRatio.push(item?.peRatio ?? 0);
+      roe.push(item?.roe ?? 0);
+      grossProfitMargin.push(item?.grossProfitMargin ?? 0);
+      debtToEquity.push(item?.debtToEquity ?? 0);
+      currentRatio.push(item?.currentRatio ?? 0);
+      assetTurnover.push(item?.assetTurnover ?? 0);
+      equityMultiplier.push(item?.equityMultiplier ?? 0);
+      totalAssets.push(item?.enterpriseValue ?? 0); // 近似
+      totalLiabilities.push(item?.totalDebt ?? 0);
+      totalStockholdersEquity.push(item?.totalSharesOutstanding ?? 0); // 近似
+      cashAndCashEquivalents.push(item?.freeCashFlowPerShare ?? 0);
+      longTermDebt.push(item?.longTermDebt ?? 0);
     }
 
-    // 如果完全没有数据，返回 6 年默认值
-    if (years.length === 0) {
-      const currentYear = new Date().getFullYear();
-      for (let i = 0; i < 6; i++) {
-        years.push((currentYear - i).toString());
-        revenue.push(0);
-        netIncome.push(0);
-        totalAssets.push(0);
-        totalLiabilities.push(0);
-        totalStockholdersEquity.push(0);
-        cashAndCashEquivalents.push(0);
-        longTermDebt.push(0);
-      }
-    }
-
-    return { years, revenue, netIncome, totalAssets, totalLiabilities, totalStockholdersEquity, cashAndCashEquivalents, longTermDebt };
+    return {
+      years,
+      peRatio,
+      roe,
+      grossProfitMargin,
+      debtToEquity,
+      currentRatio,
+      assetTurnover,
+      equityMultiplier,
+      totalAssets,
+      totalLiabilities,
+      totalStockholdersEquity,
+      cashAndCashEquivalents,
+      longTermDebt,
+      currentPrice: 0 // 从 quote 获取
+    };
 
   } catch (err) {
-    console.warn(`[API] 获取 ${ticker} 财务报表失败:`, err.message);
-    // 返回全零的默认数据
-    const currentYear = new Date().getFullYear();
-    const years = [];
-    for (let i = 0; i < 6; i++) years.push((currentYear - i).toString());
-    return {
-      years, revenue: [0,0,0,0,0,0], netIncome: [0,0,0,0,0,0],
-      totalAssets: [0,0,0,0,0,0], totalLiabilities: [0,0,0,0,0,0],
-      totalStockholdersEquity: [0,0,0,0,0,0],
-      cashAndCashEquivalents: [0,0,0,0,0,0], longTermDebt: [0,0,0,0,0,0]
-    };
+    const status = err.response?.status || 'unknown';
+    const errData = err.response?.data || {};
+    console.error(`[FMP ${status} 详情] 关键指标 ${ticker}:`, JSON.stringify(errData));
+    console.warn(`[FMP] 获取 ${ticker} 关键指标失败:`, err.message);
+    return fallbackMetrics();
   }
 }
 
-// ============================================
-// 获取估值指标（防御性）
-// ============================================
-async function getMetrics(ticker) {
-  try {
-    const [quote, metric] = await Promise.all([
-      finnhubGet('/quote', { symbol: ticker }).catch(() => ({ c: 0 })),
-      finnhubGet('/stock/metric', { symbol: ticker, metric: 'all' }).catch(() => ({ metric: {} }))
-    ]);
-
-    const metrics = metric?.metric || {};
-    const currentPrice = quote?.c || 0;
-    const eps = metrics?.epsBasicExclExtraItems || metrics?.epsInclExtraItems || 0;
-    const pe = eps > 0 ? currentPrice / eps : 0;
-    const roe = metrics?.roeRtn || metrics?.returnOnEquity || 0;
-    const grossMargin = metrics?.grossMargin || 0;
-    const currentRatio = metrics?.currentRatio || 0;
-    const debtToEquity = metrics?.totalDebtToEquity || metrics?.longTermDebtEquity || 0;
-
-    return {
-      peRatio: pe,
-      roe: roe,
-      grossProfitMargin: grossMargin,
-      debtToEquity: debtToEquity,
-      currentRatio: currentRatio,
-      currentPrice: currentPrice
-    };
-  } catch (err) {
-    console.warn(`[API] 获取 ${ticker} 指标失败，使用默认值:`, err.message);
-    return { peRatio: 0, roe: 0, grossProfitMargin: 0, debtToEquity: 0, currentRatio: 0, currentPrice: 0 };
-  }
+function fallbackMetrics() {
+  return {
+    years: [], peRatio: [], roe: [], grossProfitMargin: [],
+    debtToEquity: [], currentRatio: [], assetTurnover: [], equityMultiplier: [],
+    totalAssets: [], totalLiabilities: [], totalStockholdersEquity: [],
+    cashAndCashEquivalents: [], longTermDebt: [], currentPrice: 0
+  };
 }
 
 // ============================================
@@ -340,25 +341,80 @@ app.get('/api/stocks/:ticker', async (req, res) => {
       getMetrics(ticker)
     ]);
 
-    // 防御：确保 financialData 有 years 数组
-    const numYears = financialData?.years?.length || 6;
+    // ===== 合并利润表数据 + 关键指标数据 =====
+    // financialData 来自 income-statement: 有 years, revenue, netIncome
+    // metrics 来自 key-metrics: 有 years, peRatio, roe, totalAssets 等
+    // 以 financialData.years 为基准，从 metrics 中按年份匹配
 
-    // 构建比率数组（与年份对齐）
-    const peRatio = Array(numYears).fill(metrics?.peRatio ?? 0);
-    const roe = (financialData?.totalStockholdersEquity || []).map((eq, i) =>
-      eq > 0 ? +((financialData?.netIncome?.[i] || 0) / eq).toFixed(4) : 0
-    );
-    const grossProfitMargin = Array(numYears).fill(metrics?.grossProfitMargin ?? 0);
-    const debtToEquity = (financialData?.totalStockholdersEquity || []).map((eq, i) =>
-      eq > 0 ? +((financialData?.totalLiabilities?.[i] || 0) / eq).toFixed(4) : 0
-    );
-    const currentRatio = Array(numYears).fill(metrics?.currentRatio ?? 0);
-    const assetTurnover = (financialData?.totalAssets || []).map((ta, i) =>
-      ta > 0 ? +((financialData?.revenue?.[i] || 0) / ta).toFixed(4) : 0
-    );
-    const equityMultiplier = (financialData?.totalStockholdersEquity || []).map((eq, i) =>
-      eq > 0 ? +((financialData?.totalAssets?.[i] || 0) / eq).toFixed(4) : 0
-    );
+    const baseYears = financialData?.years || [];
+    const numYears = baseYears.length || 6;
+
+    const mergedRevenue = financialData?.revenue || [];
+    const mergedNetIncome = financialData?.netIncome || [];
+
+    // 从 metrics 中按年份匹配数据
+    const mergedPE = [];
+    const mergedROE = [];
+    const mergedGrossMargin = [];
+    const mergedDebtToEquity = [];
+    const mergedCurrentRatio = [];
+    const mergedAssetTurnover = [];
+    const mergedEquityMultiplier = [];
+    const mergedTotalAssets = [];
+    const mergedTotalLiabilities = [];
+    const mergedTotalEquity = [];
+    const mergedCash = [];
+    const mergedLongTermDebt = [];
+
+    // 构建 metrics 的年份查找表
+    const metricsByYear = {};
+    if (metrics?.years) {
+      for (let i = 0; i < metrics.years.length; i++) {
+        const y = metrics.years[i];
+        metricsByYear[y] = {
+          peRatio: metrics.peRatio?.[i] ?? 0,
+          roe: metrics.roe?.[i] ?? 0,
+          grossProfitMargin: metrics.grossProfitMargin?.[i] ?? 0,
+          debtToEquity: metrics.debtToEquity?.[i] ?? 0,
+          currentRatio: metrics.currentRatio?.[i] ?? 0,
+          assetTurnover: metrics.assetTurnover?.[i] ?? 0,
+          equityMultiplier: metrics.equityMultiplier?.[i] ?? 0,
+          totalAssets: metrics.totalAssets?.[i] ?? 0,
+          totalLiabilities: metrics.totalLiabilities?.[i] ?? 0,
+          totalEquity: metrics.totalStockholdersEquity?.[i] ?? 0,
+          cash: metrics.cashAndCashEquivalents?.[i] ?? 0,
+          longTermDebt: metrics.longTermDebt?.[i] ?? 0
+        };
+      }
+    }
+
+    for (const year of baseYears) {
+      const m = metricsByYear[year] || {};
+      mergedPE.push(m.peRatio ?? 0);
+      mergedROE.push(m.roe ?? 0);
+      mergedGrossMargin.push(m.grossProfitMargin ?? 0);
+      mergedDebtToEquity.push(m.debtToEquity ?? 0);
+      mergedCurrentRatio.push(m.currentRatio ?? 0);
+      mergedAssetTurnover.push(m.assetTurnover ?? 0);
+      mergedEquityMultiplier.push(m.equityMultiplier ?? 0);
+      mergedTotalAssets.push(m.totalAssets ?? 0);
+      mergedTotalLiabilities.push(m.totalLiabilities ?? 0);
+      mergedTotalEquity.push(m.totalEquity ?? 0);
+      mergedCash.push(m.cash ?? 0);
+      mergedLongTermDebt.push(m.longTermDebt ?? 0);
+    }
+
+    // 如果 baseYears 为空，使用 metrics 的年份
+    const finalYears = baseYears.length > 0 ? baseYears : (metrics?.years || []);
+    const finalRevenue = mergedRevenue.length > 0 ? mergedRevenue : Array(finalYears.length).fill(0);
+    const finalNetIncome = mergedNetIncome.length > 0 ? mergedNetIncome : Array(finalYears.length).fill(0);
+
+    // 确保所有数组长度一致
+    const finalLen = finalYears.length;
+    function pad(arr) {
+      while (arr.length < finalLen) arr.push(0);
+      return arr.slice(0, finalLen);
+    }
 
     // 组装返回数据 — 完全兼容前端 index.html 的期望格式
     const responseData = {
@@ -366,26 +422,26 @@ app.get('/api/stocks/:ticker', async (req, res) => {
       companyName: profile?.name || ticker,
       sector: profile?.sector || 'Technology',
       financialData: {
-        years: financialData?.years || [],
-        revenue: financialData?.revenue || [],
-        netIncome: financialData?.netIncome || [],
-        totalAssets: financialData?.totalAssets || [],
-        totalLiabilities: financialData?.totalLiabilities || [],
-        totalStockholdersEquity: financialData?.totalStockholdersEquity || [],
-        cashAndCashEquivalents: financialData?.cashAndCashEquivalents || [],
-        longTermDebt: financialData?.longTermDebt || [],
-        peRatio: peRatio,
-        roe: roe,
-        grossProfitMargin: grossProfitMargin,
-        debtToEquity: debtToEquity,
-        currentRatio: currentRatio,
-        assetTurnover: assetTurnover,
-        equityMultiplier: equityMultiplier
+        years: finalYears,
+        revenue: pad(finalRevenue),
+        netIncome: pad(finalNetIncome),
+        totalAssets: pad(mergedTotalAssets),
+        totalLiabilities: pad(mergedTotalLiabilities),
+        totalStockholdersEquity: pad(mergedTotalEquity),
+        cashAndCashEquivalents: pad(mergedCash),
+        longTermDebt: pad(mergedLongTermDebt),
+        peRatio: pad(mergedPE),
+        roe: pad(mergedROE),
+        grossProfitMargin: pad(mergedGrossMargin),
+        debtToEquity: pad(mergedDebtToEquity),
+        currentRatio: pad(mergedCurrentRatio),
+        assetTurnover: pad(mergedAssetTurnover),
+        equityMultiplier: pad(mergedEquityMultiplier)
       },
       klineData: klineData || []
     };
 
-    console.log(`[API] ✅ ${ticker} 成功! 公司:${responseData.companyName}, K线:${klineData?.length || 0}条`);
+    console.log(`[API] ✅ ${ticker} 成功! 公司:${responseData.companyName}, 财务年份:${finalYears.length}, K线:${klineData?.length || 0}条`);
     res.json(responseData);
 
   } catch (error) {
