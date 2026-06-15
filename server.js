@@ -481,6 +481,32 @@ app.get('/api/stocks/:ticker', async (req, res) => {
       }
     }
 
+    // ===== 全面包抄：从 income-statement 获取 EPS 强算 PE =====
+    // 即使上面的逻辑没算出 PE，这里用 income-statement 的 eps 再算一次
+    if (mergedPE.every(v => v <= 0)) {
+      try {
+        const incomeRaw = await axios.get('https://financialmodelingprep.com/stable/income-statement', {
+          params: { symbol: ticker, limit: 1, apikey: FMP_API_KEY },
+          timeout: 10000
+        }).catch(() => ({ data: [] }));
+        const incomeArr = incomeRaw.data;
+        if (Array.isArray(incomeArr) && incomeArr.length > 0) {
+          const latest = incomeArr[0];
+          const latestClose = Array.isArray(klineData) && klineData.length > 0
+            ? Number(klineData[klineData.length - 1]?.close) || 1
+            : 1;
+          const eps = Number(latest?.eps) || Number(latest?.epsdiluted) || 1;
+          const calculatedPe = Number((latestClose / eps).toFixed(2)) || 0;
+          if (calculatedPe > 0) {
+            for (let i = 0; i < mergedPE.length; i++) mergedPE[i] = calculatedPe;
+            console.log(`[FMP 兜底] ${ticker} PE 从 income-statement EPS 强算: ${calculatedPe} (close=${latestClose}, eps=${eps})`);
+          }
+        }
+      } catch (e) {
+        // 静默失败
+      }
+    }
+
     // 毛利率 (GM)：强算 (revenue - costOfRevenue) / revenue
     const hasRealGM = mergedGrossMargin.some(v => v > 0);
     if (!hasRealGM) {
