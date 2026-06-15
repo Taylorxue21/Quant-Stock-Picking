@@ -278,6 +278,11 @@ async function getMetrics(ticker) {
     // ===== 打印 /stable/ 接口真实字段名 =====
     console.log('[FMP Stable 关键指标第一条真实结构]:', JSON.stringify(metricsData[0] || {}));
     console.log('[FMP Stable 关键指标第一条Keys]:', Object.keys(metricsData[0] || {}));
+    // 打印 peRatio 相关字段
+    const first = metricsData[0] || {};
+    console.log('[FMP 字段诊断] peRatio相关:', 'peRatio=', first.peRatio, 'priceEarningsRatio=', first.priceEarningsRatio, 'PE=', first.PE, 'priceEarnings=', first.priceEarnings);
+    console.log('[FMP 字段诊断] debtToEquity相关:', 'debtToEquity=', first.debtToEquity, 'DebtToEquity=', first.DebtToEquity, 'totalDebtToEquity=', first.totalDebtToEquity);
+    console.log('[FMP 字段诊断] grossProfitMargin相关:', 'grossProfitMargin=', first.grossProfitMargin, 'grossMargin=', first.grossMargin, 'GrossProfitMargin=', first.GrossProfitMargin);
 
     // FMP 返回按年份降序（最新在前），反转成升序
     const sorted = [...metricsData].reverse();
@@ -433,12 +438,12 @@ app.get('/api/stocks/:ticker', async (req, res) => {
     const finalRevenue = (financialData?.revenue || []).map(v => v ?? 0);
     const finalNetIncome = (financialData?.netIncome || []).map(v => v ?? 0);
 
-    // 确保所有数组长度一致（用 0 填充/截断，杜绝 null）
+    // 确保所有数组长度一致（强力清洗，杜绝 null/undefined/NaN）
     const finalLen = finalYears.length;
     function safe(arr) {
       const result = [];
       for (let i = 0; i < finalLen; i++) {
-        result.push((arr[i] ?? 0));
+        result.push(Number(arr[i]) || 0);
       }
       return result;
     }
