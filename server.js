@@ -72,13 +72,16 @@ async function getCompanyProfile(ticker) {
 // ============================================
 async function getKlineData(ticker) {
   try {
+    // ===== FMP 诊断日志 =====
+    console.log('[FMP 诊断] 检查密钥状态: 是否读取到?', !!FMP_API_KEY, '| 长度:', FMP_API_KEY?.length);
+
     if (!FMP_API_KEY) {
       console.warn(`[FMP] FMP_API_KEY 未设置，无法获取 K 线`);
       return [];
     }
 
     const url = `https://financialmodelingprep.com/api/v3/historical-price-full/${ticker}?apikey=${FMP_API_KEY}`;
-    console.log(`[FMP] 请求 K 线: ${ticker}`);
+    console.log('[FMP 诊断] 正在请求:', url.replace(FMP_API_KEY, '***'));
 
     const res = await axios.get(url, { timeout: 15000 });
     const data = res.data;
@@ -127,6 +130,10 @@ async function getKlineData(ticker) {
     return result;
 
   } catch (err) {
+    // 打印 FMP 返回的具体错误详情
+    const status = err.response?.status || 'unknown';
+    const errData = err.response?.data || {};
+    console.error(`[FMP ${status} 详情] ${ticker}:`, JSON.stringify(errData));
     console.warn(`[FMP] 获取 ${ticker} K线失败:`, err.message);
     return [];
   }
