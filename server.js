@@ -107,18 +107,19 @@ async function getKlineData(ticker) {
     const sliceCount = Math.min(data.length, 252);
     const recentData = data.slice(0, sliceCount);
 
-    // 链式处理：filter 剔除 null 坏数据 → map 强转数值 → reverse 升序
+    // 链式处理：filter → sort 强制升序 → map 强转数值 + 截断日期
     const result = recentData
-      .filter(item => item.open != null && item.high != null && item.low != null && item.close != null && item.date != null)
+      .filter(item => item && item.date && item.open != null && item.close != null)
+      // 【最关键】强制按时间绝对升序排列！
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
       .map(item => ({
-        time: item.date,
+        time: item.date.split('T')[0], // 强行截断，确保严格的 YYYY-MM-DD
         open: Number(item.open) || 0,
         high: Number(item.high) || 0,
         low: Number(item.low) || 0,
         close: Number(item.close) || 0,
         volume: Number(item.volume) || 0
-      }))
-      .reverse();
+      }));
 
     console.log(`[后端整理完毕] 成功组装 K 线数据: ${result.length} 条 (FMP /stable/)`);
     return result;
@@ -435,6 +436,43 @@ app.get('/api/stocks/:ticker', async (req, res) => {
         result.push(Number(arr[i]) || 0);
       }
       return result;
+    }
+
+    // ===== 暴力兜底 0.00 指标：直接从原始 API 数据中计算 =====
+    // 如果 mergedPE 全是 0，尝试从 metrics 原始数据直接提取
+    const hasRealPE = mergedPE.some(v => v > 0);
+    if (!hasRealPE && metrics?.peRatio?.length > 0) {
+      // 取最新一年的 peRatio
+      const latestPE = Number(metrics.peRatio[metrics.peRatio.length - 1]) || 0;
+      if (latestPE > 0) {
+        for (let i = 0; i < mergedPE.length; i++) mergedPE[i] = latestPE;
+      }
+    }
+
+    const hasRealGM = mergedGrossMargin.some(v => v > 0);
+    if (!hasRealGM) {
+      // 从 income-statement 计算毛利率 = (revenue - costOfRevenue) / revenue
+      // 重新获取 incomeData 进行计算（financialData 中已有 revenue）
+      // 使用 finalRevenue 和 finalNetIncome 近似，但最好从原始数据算
+      // 尝试从 metrics 取 grossProfitRatio
+      if (metrics?.grossProfitMargin?.length > 0) {
+        const latestGM = Number(metrics.grossProfitMargin[metrics.grossProfitMargin.length - 1]) || 0;
+        if (latestGM > 0) {
+          for (let i = 0; i < mergedGrossMargin.length; i++) mergedGrossMargin[i] = latestGM;
+        }
+      }
+    }
+
+    const hasRealDE = mergedDebtToEquity.some(v => v > 0);
+    if (!hasRealDE) {
+      // 强算 D/E = totalLiabilities / totalStockholdersEquity
+      for (let i = 0; i < mergedDebtToEquity.length; i++) {
+        const eq = mergedTotalEquity[i] || 0;
+        const liab = mergedTotalLiabilities[i] || 0;
+        if (eq > 0) {
+          mergedDebtToEquity[i] = Number((liab / eq).toFixed(4));
+        }
+      }
     }
 
     // 组装返回数据 — 完全兼容前端 index.html 的期望格式
