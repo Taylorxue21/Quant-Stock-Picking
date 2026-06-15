@@ -31,15 +31,23 @@ app.use(express.static(path.join(__dirname, 'public')));
 const FINNHUB_BASE = 'https://finnhub.io/api/v1';
 
 // ============================================
-// 工具函数：调用 Finnhub API
+// 工具函数：调用 Finnhub API（带详细错误日志）
 // ============================================
 async function finnhubGet(endpoint, params = {}) {
   const url = `${FINNHUB_BASE}${endpoint}`;
-  const response = await axios.get(url, {
-    params: { ...params, token: FINNHUB_API_KEY },
-    timeout: 15000
-  });
-  return response.data;
+  try {
+    const response = await axios.get(url, {
+      params: { ...params, token: FINNHUB_API_KEY },
+      timeout: 15000
+    });
+    return response.data;
+  } catch (err) {
+    // 打印 Finnhub 返回的具体错误详情
+    const status = err.response?.status || 'unknown';
+    const data = err.response?.data || {};
+    console.error(`[Finnhub ${status} 详情] ${endpoint}:`, JSON.stringify(data));
+    throw err;
+  }
 }
 
 // ============================================
