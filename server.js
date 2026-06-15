@@ -473,6 +473,34 @@ app.get('/api/stocks/:ticker', async (req, res) => {
       klineData: klineData || []
     };
 
+    // ===== 绝对无菌清洗：强制清洗 financialData 中的所有数组，防止前端图表库崩溃 =====
+    const fd = responseData.financialData;
+    Object.keys(fd).forEach(key => {
+      if (Array.isArray(fd[key]) && key !== 'years') {
+        fd[key] = fd[key].map(val => {
+          const num = Number(val);
+          // 将 null, undefined, NaN 全部强转为 0
+          return isNaN(num) || val === null ? 0 : num;
+        });
+      }
+    });
+
+    // 同样清洗 klineData 中的数值字段
+    if (Array.isArray(responseData.klineData)) {
+      responseData.klineData = responseData.klineData.map(item => {
+        if (item && typeof item === 'object') {
+          const cleaned = {};
+          for (const k of Object.keys(item)) {
+            const v = item[k];
+            const num = Number(v);
+            cleaned[k] = (k === 'time') ? v : (isNaN(num) || v === null ? 0 : num);
+          }
+          return cleaned;
+        }
+        return item;
+      });
+    }
+
     console.log(`[API] ✅ ${ticker} 成功! 公司:${responseData.companyName}, 财务年份:${finalYears.length}, K线:${klineData?.length || 0}条`);
     res.json(responseData);
 
