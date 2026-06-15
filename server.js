@@ -107,29 +107,18 @@ async function getKlineData(ticker) {
     const sliceCount = Math.min(data.length, 252);
     const recentData = data.slice(0, sliceCount);
 
-    const result = [];
-    for (const item of recentData) {
-      const open = item.open;
-      const high = item.high;
-      const low = item.low;
-      const close = item.close;
-      const volume = item.volume;
-      const date = item.date;
-
-      if (open != null && high != null && low != null && close != null && date != null) {
-        result.push({
-          time: date,
-          open: open,
-          high: high,
-          low: low,
-          close: close,
-          volume: volume ?? 0
-        });
-      }
-    }
-
-    // FMP 返回按日期降序（最新在前），前端需要升序
-    result.reverse();
+    // 链式处理：filter 剔除 null 坏数据 → map 强转数值 → reverse 升序
+    const result = recentData
+      .filter(item => item.open != null && item.high != null && item.low != null && item.close != null && item.date != null)
+      .map(item => ({
+        time: item.date,
+        open: Number(item.open) || 0,
+        high: Number(item.high) || 0,
+        low: Number(item.low) || 0,
+        close: Number(item.close) || 0,
+        volume: Number(item.volume) || 0
+      }))
+      .reverse();
 
     console.log(`[后端整理完毕] 成功组装 K 线数据: ${result.length} 条 (FMP /stable/)`);
     return result;
