@@ -66,21 +66,30 @@ async function getCompanyProfile(ticker) {
 }
 
 // ============================================
-// 获取 K 线数据（5 年日线）
+// 获取 K 线数据（1 年日线，直接 axios 请求）
 // ============================================
 async function getKlineData(ticker) {
   try {
-    // 严格使用 10 位 UNIX 秒级时间戳
+    // 严格 10 位 UNIX 秒级时间戳，1 年跨度
     const to = Math.floor(Date.now() / 1000);
-    const from = to - 5 * 365 * 24 * 60 * 60; // 5 年前
-    console.log(`[API] ${ticker} K线请求参数: from=${from}, to=${to}, resolution=D`);
+    const from = to - (365 * 24 * 60 * 60); // 1 年前
 
-    const data = await finnhubGet('/stock/candle', {
-      symbol: ticker,
-      resolution: 'D',
-      from: from,
-      to: to
+    console.log(`[API 请求准备] 发送参数: symbol=${ticker}, resolution=D, from=${from}, to=${to}`);
+
+    // 直接使用 axios.get 而非 finnhubGet，确保参数传递无误
+    const klineRes = await axios.get('https://finnhub.io/api/v1/stock/candle', {
+      params: {
+        symbol: ticker,
+        resolution: 'D',
+        from: from,
+        to: to,
+        token: FINNHUB_API_KEY
+      },
+      timeout: 15000
     });
+
+    const data = klineRes.data;
+    console.log('[Finnhub 原始返回]', JSON.stringify(data).substring(0, 200) + '...');
 
     // 处理无数据情况
     if (!data || data.s === 'no_data') {
@@ -95,12 +104,12 @@ async function getKlineData(ticker) {
     }
 
     // Finnhub 返回按列拆分的数组: { t: [], o: [], h: [], l: [], c: [], v: [], s: 'ok' }
-    const timestamps = data?.t;
-    const opens = data?.o;
-    const highs = data?.h;
-    const lows = data?.l;
-    const closes = data?.c;
-    const volumes = data?.v;
+    const timestamps = data.t;
+    const opens = data.o;
+    const highs = data.h;
+    const lows = data.l;
+    const closes = data.c;
+    const volumes = data.v;
 
     if (!Array.isArray(timestamps) || timestamps.length === 0) {
       console.warn(`[API] ${ticker} K线时间戳数组为空`);
@@ -110,11 +119,11 @@ async function getKlineData(ticker) {
     const length = timestamps.length;
     const result = [];
     for (let i = 0; i < length; i++) {
-      const open = opens?.[i];
-      const high = highs?.[i];
-      const low = lows?.[i];
-      const close = closes?.[i];
-      const volume = volumes?.[i];
+      const open = opens[i];
+      const high = highs[i];
+      const low = lows[i];
+      const close = closes[i];
+      const volume = volumes[i];
       const timestamp = timestamps[i];
 
       // 只保留有完整 OHLC 数据的有效条目
@@ -130,7 +139,7 @@ async function getKlineData(ticker) {
       }
     }
 
-    console.log(`[后端整理完毕] 成功组装 5 年 K 线数据: ${result.length} 条`);
+    console.log(`[后端整理完毕] 成功组装 1 年 K 线数据: ${result.length} 条`);
     return result;
 
   } catch (err) {
