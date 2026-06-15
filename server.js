@@ -8,6 +8,8 @@ const PORT = process.env.PORT || 3000;
 
 // Finnhub API Key — 从环境变量读取
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || '';
+// FMP API Key — 用于获取 K 线数据
+const FMP_API_KEY = process.env.FMP_API_KEY || '';
 
 app.use(cors());
 app.use(express.json());
@@ -66,94 +68,68 @@ async function getCompanyProfile(ticker) {
 }
 
 // ============================================
-// 获取 K 线数据（带自动降级和全链路日志）
+// 获取 K 线数据（使用 FMP API）
 // ============================================
 async function getKlineData(ticker) {
-  // 尝试的时间窗口列表（年）：先试 1 年，如果 no_data 则试更短
-  const windows = [1, 0.5, 0.25]; // 1年, 半年, 3个月
-
-  for (const years of windows) {
-    try {
-      // 严格 10 位 UNIX 秒级时间戳 — 动态计算，绝不写死
-      const to = Math.floor(Date.now() / 1000);
-      const from = Math.floor(to - (years * 365 * 24 * 60 * 60));
-
-      console.log(`[API 请求准备] symbol=${ticker}, resolution=D, from=${from}, to=${to}, 跨度=${years}年`);
-
-      const klineRes = await axios.get('https://finnhub.io/api/v1/stock/candle', {
-        params: {
-          symbol: ticker,
-          resolution: 'D',
-          from: from,
-          to: to,
-          token: FINNHUB_API_KEY
-        },
-        timeout: 15000
-      });
-
-      // ===== 全链路裸数据监控 =====
-      console.log('[Finnhub 绝对原始返回]:', JSON.stringify(klineRes.data));
-      console.log('[后端数据检查] data.s状态:', klineRes.data?.s,
-        '| data.c是否存在:', !!klineRes.data?.c,
-        '| data.c长度:', klineRes.data?.c?.length,
-        '| data.t长度:', klineRes.data?.t?.length,
-        '| data.o长度:', klineRes.data?.o?.length);
-
-      const data = klineRes.data;
-
-      // 处理无数据 → 自动降级到更短时间窗口
-      if (!data || data.s === 'no_data') {
-        console.warn(`[API] ${ticker} K线无数据 (跨度${years}年)，尝试更短窗口...`);
-        continue; // 进入下一个更短的时间窗口
-      }
-
-      // 检查数据是否有效
-      if (data.s !== 'ok') {
-        console.warn(`[API] ${ticker} K线状态异常: s=${data?.s}`);
-        continue;
-      }
-
-      // 检查核心数组
-      if (!Array.isArray(data.t) || data.t.length === 0) {
-        console.warn(`[API] ${ticker} K线时间戳数组为空`);
-        continue;
-      }
-
-      // 组装数据
-      const length = data.t.length;
-      const result = [];
-      for (let i = 0; i < length; i++) {
-        const open = data.o?.[i];
-        const high = data.h?.[i];
-        const low = data.l?.[i];
-        const close = data.c?.[i];
-        const volume = data.v?.[i];
-        const timestamp = data.t[i];
-
-        if (open != null && high != null && low != null && close != null && timestamp != null) {
-          result.push({
-            time: new Date(timestamp * 1000).toISOString().split('T')[0],
-            open: open,
-            high: high,
-            low: low,
-            close: close,
-            volume: volume ?? 0
-          });
-        }
-      }
-
-      console.log(`[后端整理完毕] 成功组装 ${years} 年 K 线数据: ${result.length} 条`);
-      return result;
-
-    } catch (err) {
-      console.warn(`[API] 获取 ${ticker} K线失败 (跨度${years}年):`, err.message);
-      continue; // 尝试下一个窗口
+  try {
+    if (!FMP_API_KEY) {
+      console.warn(`[FMP] FMP_API_KEY 未设置，无法获取 K 线`);
+      return [];
     }
-  }
 
-  // 所有窗口都失败
-  console.warn(`[API] ${ticker} K线: 所有时间窗口均无数据`);
-  return [];
+    const url = `https://financialmodelingprep.com/api/v3/historical-price-full/${ticker}?apikey=${FMP_API_KEY}`;
+    console.log(`[FMP] 请求 K 线: ${ticker}`);
+
+    const res = await axios.get(url, { timeout: 15000 });
+    const data = res.data;
+
+    // FMP 返回: { symbol: "AAPL", historical: [{ date, open, high, low, close, volume }] }
+    const historical = data?.historical;
+
+    if (!Array.isArray(historical) || historical.length === 0) {
+      console.warn(`[FMP] ${ticker} 无历史数据`);
+      return [];
+    }
+
+    console.log(`[FMP] ${ticker} 原始数据: ${historical.length} 条`);
+
+    // 截取最近 1 年（约 252 个交易日）
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    const result = [];
+    for (const item of historical) {
+      const itemDate = new Date(item.date);
+      if (itemDate < oneYearAgo) continue; // 只保留最近 1 年
+
+      const open = item.open;
+      const high = item.high;
+      const low = item.low;
+      const close = item.close;
+      const volume = item.volume;
+
+      if (open != null && high != null && low != null && close != null) {
+        result.push({
+          time: item.date,
+          open: open,
+          high: high,
+          low: low,
+          close: close,
+          volume: volume ?? 0
+        });
+      }
+    }
+
+    // FMP 返回按日期降序（最新在前），前端可能需要升序
+    result.reverse();
+
+    console.log(`[后端整理完毕] 成功组装 K 线数据: ${result.length} 条 (FMP)`);
+    return result;
+
+  } catch (err) {
+    console.warn(`[FMP] 获取 ${ticker} K线失败:`, err.message);
+    return [];
+  }
 }
 
 // ============================================
