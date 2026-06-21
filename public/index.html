@@ -494,6 +494,13 @@
       document.getElementById('klineTicker').textContent = data.ticker;
       document.getElementById('klineCompany').textContent = data.companyName;
       document.getElementById('klineSector').textContent = data.sector;
+
+      // 动态更新数据截止日期（在图表渲染前执行，防止图表崩溃卡死日期更新）
+      const latestDate = data.latestDate || (prices.length > 0 ? prices[prices.length - 1].time : 'N/A');
+      const statusEl = document.getElementById('status-text-id');
+      if (statusEl) statusEl.textContent = '数据截至: ' + latestDate;
+      const updateEl = document.getElementById('update-time-id');
+      if (updateEl) updateEl.textContent = '更新于 ' + latestDate;
       const latest = prices[prices.length - 1];
       document.getElementById('klineOpen').textContent = '$' + latest.open.toFixed(2);
       document.getElementById('klineHigh').textContent = '$' + latest.high.toFixed(2);
