@@ -22,31 +22,6 @@
         </div>
       </div>
       <div class="header-center">
-        <div class="company-selector">
-          <label for="companySelect">公司选择</label>
-          <select id="companySelect">
-            <option value="NVDA">NVDA - NVIDIA Corporation</option>
-            <option value="AAPL">AAPL - Apple Inc.</option>
-            <option value="MSFT">MSFT - Microsoft Corporation</option>
-            <option value="GOOGL">GOOGL - Alphabet Inc.</option>
-            <option value="AMZN">AMZN - Amazon.com Inc.</option>
-            <option value="META">META - Meta Platforms Inc.</option>
-            <option value="TSLA">TSLA - Tesla Inc.</option>
-            <option value="AVGO">AVGO - Broadcom Inc.</option>
-            <option value="AMD">AMD - Advanced Micro Devices</option>
-            <option value="INTC">INTC - Intel Corporation</option>
-            <option value="CRM">CRM - Salesforce Inc.</option>
-            <option value="ADBE">ADBE - Adobe Inc.</option>
-            <option value="NFLX">NFLX - Netflix Inc.</option>
-            <option value="ORCL">ORCL - Oracle Corporation</option>
-            <option value="IBM">IBM - International Business Machines</option>
-            <option value="QCOM">QCOM - Qualcomm Inc.</option>
-            <option value="TXN">TXN - Texas Instruments</option>
-            <option value="CSCO">CSCO - Cisco Systems</option>
-            <option value="PYPL">PYPL - PayPal Holdings</option>
-            <option value="UBER">UBER - Uber Technologies</option>
-          </select>
-        </div>
       </div>
       <div class="header-right">
         <div class="data-status">
@@ -535,10 +510,6 @@
         const data = await loadStockData(ticker);
         if (data) {
           currentData = data;
-          var sel = document.getElementById('companySelect');
-          for (var i = 0; i < sel.options.length; i++) {
-            if (sel.options[i].value === ticker) { sel.selectedIndex = i; break; }
-          }
           renderAll(data);
         }
       } catch (err) {
@@ -767,13 +738,6 @@
       } else {
         console.error('[前端] NVDA 数据加载失败！');
       }
-      document.getElementById('companySelect').addEventListener('change', async function() {
-        var ticker = this.value;
-        console.log('[前端] 下拉菜单切换:', ticker);
-        document.getElementById('klineTickerInput').value = ticker;
-        var d = await loadStockData(ticker);
-        if (d) { currentData = d; renderAll(d); }
-      });
       document.getElementById('klineTickerInput').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') { window.queryKLineChart(); }
       });
