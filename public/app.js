@@ -255,11 +255,10 @@ function updateKLineChart(stockData) {
   const rawKlineData = stockData.klineData || stockData.stockPrices || [];
 
   // 先更新顶部日期与基础文本信息，确保即使图表渲染失败，文字也能先显示
-  const latestDate = stockData.latestDate || (Array.isArray(rawKlineData) && rawKlineData.length > 0 ? rawKlineData[rawKlineData.length - 1]?.time : 'N/A');
-  const statusText = document.querySelector('.status-text');
-  if (statusText) statusText.textContent = '数据截至: ' + latestDate;
-  const updateTimeEl = document.querySelector('.update-time');
-  if (updateTimeEl) updateTimeEl.textContent = '更新于 ' + latestDate;
+  const dateLabel = document.getElementById('latest-date-label');
+if (dateLabel && stockData.latestDate) {
+    dateLabel.innerText = `● 数据截止至: ${stockData.latestDate}`;
+}
 
   document.getElementById('klineTicker').textContent = stockData.ticker || '--';
   document.getElementById('klineCompany').textContent = stockData.companyName || '--';
