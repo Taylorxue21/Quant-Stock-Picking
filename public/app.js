@@ -249,31 +249,67 @@ function initKLineChart() {
 }
 
 function updateKLineChart(stockData) {
-  if (!stockData || !stockData.stockPrices || stockData.stockPrices.length === 0) return;
+  if (!stockData) return;
 
-  const prices = stockData.stockPrices;
+  // 兼容 klineData / stockPrices 两种结构
+  const rawKlineData = stockData.klineData || stockData.stockPrices || [];
 
-  // Update info bar
-  document.getElementById('klineTicker').textContent = stockData.ticker;
-  document.getElementById('klineCompany').textContent = stockData.companyName;
-  document.getElementById('klineSector').textContent = stockData.sector;
+  // 先更新顶部日期与基础文本信息，确保即使图表渲染失败，文字也能先显示
+  const latestDate = stockData.latestDate || (Array.isArray(rawKlineData) && rawKlineData.length > 0 ? rawKlineData[rawKlineData.length - 1]?.time : 'N/A');
+  const statusText = document.querySelector('.status-text');
+  if (statusText) statusText.textContent = '数据截至: ' + latestDate;
+  const updateTimeEl = document.querySelector('.update-time');
+  if (updateTimeEl) updateTimeEl.textContent = '更新于 ' + latestDate;
 
-  const latest = prices[prices.length - 1];
-  document.getElementById('klineOpen').textContent = '$' + latest.open.toFixed(2);
-  document.getElementById('klineHigh').textContent = '$' + latest.high.toFixed(2);
-  document.getElementById('klineLow').textContent = '$' + latest.low.toFixed(2);
-  document.getElementById('klineClose').textContent = '$' + latest.close.toFixed(2);
-  document.getElementById('klineVolume').textContent = formatVolume(latest.volume);
+  document.getElementById('klineTicker').textContent = stockData.ticker || '--';
+  document.getElementById('klineCompany').textContent = stockData.companyName || '--';
+  document.getElementById('klineSector').textContent = stockData.sector || '--';
+
+  if (!Array.isArray(rawKlineData) || rawKlineData.length === 0) {
+    console.warn('[K线] 无可用 K 线数据');
+    document.getElementById('klineOpen').textContent = '--';
+    document.getElementById('klineHigh').textContent = '--';
+    document.getElementById('klineLow').textContent = '--';
+    document.getElementById('klineClose').textContent = '--';
+    document.getElementById('klineVolume').textContent = '--';
+    return;
+  }
+
+  const safeKlineData = rawKlineData.filter(d =>
+    d &&
+    typeof d.time === 'string' && d.time.length > 0 &&
+    d.open != null && !isNaN(d.open) &&
+    d.high != null && !isNaN(d.high) &&
+    d.low != null && !isNaN(d.low) &&
+    d.close != null && !isNaN(d.close)
+  );
+
+  if (safeKlineData.length === 0) {
+    console.warn('[K线] 经过过滤后无有效数据');
+    document.getElementById('klineOpen').textContent = '--';
+    document.getElementById('klineHigh').textContent = '--';
+    document.getElementById('klineLow').textContent = '--';
+    document.getElementById('klineClose').textContent = '--';
+    document.getElementById('klineVolume').textContent = '--';
+    return;
+  }
+
+  const latest = safeKlineData[safeKlineData.length - 1];
+  document.getElementById('klineOpen').textContent = '$' + Number(latest.open || 0).toFixed(2);
+  document.getElementById('klineHigh').textContent = '$' + Number(latest.high || 0).toFixed(2);
+  document.getElementById('klineLow').textContent = '$' + Number(latest.low || 0).toFixed(2);
+  document.getElementById('klineClose').textContent = '$' + Number(latest.close || 0).toFixed(2);
+  document.getElementById('klineVolume').textContent = formatVolume(latest.volume || 0);
 
   // Set candlestick data
-  klineCandlestickSeries.setData(prices);
+  klineCandlestickSeries.setData(safeKlineData);
 
   // Set volume data (color based on price movement)
-  const volumeData = prices.map((p, i) => {
-    const prevClose = i > 0 ? prices[i - 1].close : p.close;
+  const volumeData = safeKlineData.map((p, i) => {
+    const prevClose = i > 0 ? safeKlineData[i - 1].close : p.close;
     return {
       time: p.time,
-      value: p.volume,
+      value: p.volume || 0,
       color: p.close >= prevClose ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)'
     };
   });
