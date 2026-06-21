@@ -547,11 +547,15 @@ app.get('/api/stocks/:ticker', async (req, res) => {
       }
     }
 
+    // 提取最新一个交易日的日期 (YYYY-MM-DD)
+    const latestDate = klineData[klineData.length - 1]?.time || new Date().toISOString().split('T')[0];
+
     // 组装返回数据 — 完全兼容前端 index.html 的期望格式
     const responseData = {
       ticker: ticker,
       companyName: profile?.name || ticker,
       sector: profile?.sector || 'Technology',
+      latestDate: latestDate,
       financialData: {
         years: finalYears,
         revenue: safe(finalRevenue),
@@ -645,7 +649,7 @@ app.use((req, res) => {
 // ============================================
 app.listen(PORT, () => {
   console.log(`\n  ========================================`);
-  console.log(`  Deep Financial Analysis Dashboard`);
+  console.log(`  Quant Financial Analysis Dashboard`);
   console.log(`  ========================================`);
   console.log(`  服务器已启动: http://localhost:${PORT}`);
   console.log(`  数据源: Finnhub.io (通过 API Key)`);

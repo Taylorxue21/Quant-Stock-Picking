@@ -303,6 +303,14 @@ async function queryKLineChart() {
     const stockData = await loadStockData(ticker);
     if (stockData) {
       updateKLineChart(stockData);
+      // 更新日期显示
+      if (stockData.latestDate) {
+        document.querySelector('.status-text').textContent = '数据截至: ' + stockData.latestDate;
+        const updateTimeEl = document.querySelector('.update-time');
+        if (updateTimeEl) {
+          updateTimeEl.textContent = '更新于 ' + stockData.latestDate;
+        }
+      }
     }
   } catch (err) {
     console.error('K-line query error:', err);
@@ -1001,6 +1009,16 @@ async function switchCompany(ticker) {
   const data = await loadCompanyData(ticker);
   if (!data) return;
   
+  // 更新页面顶部的数据截止日期
+  if (data.latestDate) {
+    document.querySelector('.status-text').textContent = '数据截至: ' + data.latestDate;
+    // 也更新"更新于"的时间
+    const updateTimeEl = document.querySelector('.update-time');
+    if (updateTimeEl) {
+      updateTimeEl.textContent = '更新于 ' + data.latestDate;
+    }
+  }
+  
   // Update all sections
   updateMetricsCards(data);
   updateAllCharts(data, currentChartType);
@@ -1025,6 +1043,14 @@ document.addEventListener('DOMContentLoaded', async function() {
   const initialStockData = await loadStockData(currentCompany);
   if (initialStockData) {
     updateKLineChart(initialStockData);
+    // 更新初始日期显示
+    if (initialStockData.latestDate) {
+      document.querySelector('.status-text').textContent = '数据截至: ' + initialStockData.latestDate;
+      const updateTimeEl = document.querySelector('.update-time');
+      if (updateTimeEl) {
+        updateTimeEl.textContent = '更新于 ' + initialStockData.latestDate;
+      }
+    }
   }
   
   // Company selector change handler
