@@ -481,26 +481,46 @@ app.get('/api/stocks/:ticker', async (req, res) => {
       }
     }
 
-    // ===== 全面包抄：从 income-statement 获取 EPS 强算 PE =====
-    // 即使上面的逻辑没算出 PE，这里用 income-statement 的 eps 再算一次
+    // ===== 全面包抄：从 income-statement 获取各年 EPS 强算各年 PE =====
+    // 修复：不再用 limit=1 + [0] 填充所有年份，而是获取全部年份按年匹配
     if (mergedPE.every(v => v <= 0)) {
       try {
         const incomeRaw = await axios.get('https://financialmodelingprep.com/stable/income-statement', {
-          params: { symbol: ticker, limit: 1, apikey: FMP_API_KEY },
+          params: { symbol: ticker, limit: 5, apikey: FMP_API_KEY },
           timeout: 10000
         }).catch(() => ({ data: [] }));
         const incomeArr = incomeRaw.data;
         if (Array.isArray(incomeArr) && incomeArr.length > 0) {
-          const latest = incomeArr[0];
-          const latestClose = Array.isArray(klineData) && klineData.length > 0
-            ? Number(klineData[klineData.length - 1]?.close) || 1
-            : 1;
-          const eps = Number(latest?.eps) || Number(latest?.epsdiluted) || 1;
-          const calculatedPe = Number((latestClose / eps).toFixed(2)) || 0;
-          if (calculatedPe > 0) {
-            for (let i = 0; i < mergedPE.length; i++) mergedPE[i] = calculatedPe;
-            console.log(`[FMP 兜底] ${ticker} PE 从 income-statement EPS 强算: ${calculatedPe} (close=${latestClose}, eps=${eps})`);
+          // 构建年份→eps 查找表
+          const epsByYear = {};
+          for (const item of incomeArr) {
+            const year = item?.calendarYear || item?.date?.substring(0, 4);
+            if (!year) continue;
+            const eps = Number(item?.eps) || Number(item?.epsdiluted) || 0;
+            if (eps > 0) epsByYear[year] = eps;
           }
+          // 按年份匹配计算 PE
+          for (let i = 0; i < mergedPE.length; i++) {
+            const year = finalYears[i];
+            const eps = epsByYear[year] || 0;
+            if (eps > 0) {
+              // 用该年份对应的收盘价（取该年最后一个交易日）
+              const yearClose = Array.isArray(klineData) && klineData.length > 0
+                ? (() => {
+                    // 从 klineData 中找该年份最后一个收盘价
+                    for (let j = klineData.length - 1; j >= 0; j--) {
+                      if (klineData[j]?.time?.startsWith(year)) {
+                        return Number(klineData[j].close) || 0;
+                      }
+                    }
+                    return 0;
+                  })()
+                : 0;
+              const closePrice = yearClose > 0 ? yearClose : (Number(klineData?.[klineData.length - 1]?.close) || 1);
+              mergedPE[i] = Number((closePrice / eps).toFixed(2));
+            }
+          }
+          console.log(`[FMP 兜底] ${ticker} PE 按年从 income-statement EPS 强算: ${JSON.stringify(mergedPE)}`);
         }
       } catch (e) {
         // 静默失败
@@ -510,25 +530,31 @@ app.get('/api/stocks/:ticker', async (req, res) => {
     // 毛利率 (GM)：强算 (revenue - costOfRevenue) / revenue
     const hasRealGM = mergedGrossMargin.some(v => v > 0);
     if (!hasRealGM) {
-      // 从 financialData 的 revenue 和 netIncome 无法直接算毛利率
-      // 需要 costOfRevenue，从 income-statement 原始数据获取
+      // 需要 costOfRevenue，从 income-statement 原始数据获取各年数据
       try {
         const incomeRaw = await axios.get('https://financialmodelingprep.com/stable/income-statement', {
-          params: { symbol: ticker, limit: 1, apikey: FMP_API_KEY },
+          params: { symbol: ticker, limit: 5, apikey: FMP_API_KEY },
           timeout: 10000
         }).catch(() => ({ data: [] }));
         const incomeArr = incomeRaw.data;
         if (Array.isArray(incomeArr) && incomeArr.length > 0) {
-          const latest = incomeArr[0];
-          const rev = Number(latest?.revenue) || 1;
-          const costRev = Number(latest?.costOfRevenue) || 0;
-          const grossProfit = Number(latest?.grossProfit) || 0;
-          // 优先取 grossProfitRatio，如果没有则强算
-          const gm = Number(latest?.grossProfitRatio) || (grossProfit > 0 ? grossProfit / rev : (rev - costRev > 0 ? (rev - costRev) / rev : 0));
-          if (gm > 0) {
-            for (let i = 0; i < mergedGrossMargin.length; i++) mergedGrossMargin[i] = gm;
-            console.log(`[FMP 兜底] ${ticker} GM 强算: ${gm} (grossProfit=${grossProfit}, revenue=${rev})`);
+          // 构建年份→GM 查找表
+          const gmByYear = {};
+          for (const item of incomeArr) {
+            const year = item?.calendarYear || item?.date?.substring(0, 4);
+            if (!year) continue;
+            const rev = Number(item?.revenue) || 1;
+            const costRev = Number(item?.costOfRevenue) || 0;
+            const grossProfit = Number(item?.grossProfit) || 0;
+            const gm = Number(item?.grossProfitRatio) || (grossProfit > 0 ? grossProfit / rev : (rev - costRev > 0 ? (rev - costRev) / rev : 0));
+            if (gm > 0) gmByYear[year] = gm;
           }
+          // 按年份匹配
+          for (let i = 0; i < mergedGrossMargin.length; i++) {
+            const year = finalYears[i];
+            if (gmByYear[year]) mergedGrossMargin[i] = gmByYear[year];
+          }
+          console.log(`[FMP 兜底] ${ticker} GM 按年强算: ${JSON.stringify(mergedGrossMargin)}`);
         }
       } catch (e) {
         // 静默失败
