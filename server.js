@@ -103,8 +103,8 @@ async function getKlineData(ticker) {
 
     console.log(`[FMP] ${ticker} 原始数据: ${data.length} 条`);
 
-    // 截取最近 252 个交易日（约 1 年）
-    const sliceCount = Math.min(data.length, 252);
+    // 截取最近 1260 个交易日（约 5 年）
+    const sliceCount = Math.min(data.length, 1260);
     const recentData = data.slice(0, sliceCount);
 
     // 链式处理：filter（去重）→ sort 强制升序 → map 强转数值 + 截断日期

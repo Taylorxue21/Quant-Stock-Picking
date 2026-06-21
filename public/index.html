@@ -463,9 +463,10 @@
         grid: { vertLines: { color: 'rgba(42, 48, 64, 0.5)' }, horzLines: { color: 'rgba(42, 48, 64, 0.5)' } },
         crosshair: { mode: LightweightCharts.CrosshairMode.Normal, vertLine: { color: '#3b82f6', width: 1, style: LightweightCharts.LineStyle.Dashed, labelBackgroundColor: '#3b82f6' }, horzLine: { color: '#3b82f6', width: 1, style: LightweightCharts.LineStyle.Dashed, labelBackgroundColor: '#3b82f6' } },
         rightPriceScale: { borderColor: '#2a3040', scaleMargins: { top: 0.05, bottom: 0.05 } },
-        timeScale: { borderColor: '#2a3040', timeVisible: true, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
+        timeScale: { borderColor: '#2a3040', timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
         handleScroll: { vertTouchDrag: false },
-        handleScale: { axisPressedMouseMove: true }
+        handleScale: { axisPressedMouseMove: true },
+        localization: { dateFormat: 'yyyy-MM-dd' }
       });
       klineCandlestickSeries = klineChart.addCandlestickSeries({
         upColor: '#22c55e', downColor: '#ef4444', borderDownColor: '#ef4444', borderUpColor: '#22c55e', wickDownColor: '#ef4444', wickUpColor: '#22c55e',
